@@ -1,0 +1,32 @@
+# Byte-compiled Python files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Virtual environment
+.venv/
+env/
+venv/
+.env/
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Test database
+test_db.db
+*.sqlite3
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Secret files
+.env
+secrets.json
+config.ini
