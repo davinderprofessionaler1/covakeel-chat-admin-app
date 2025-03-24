@@ -14,7 +14,7 @@ import fitz
 from lingua import Language, LanguageDetectorBuilder
 from typing import Tuple
 
-FOLDER = "./acts"
+FOLDER = "./acts_pdf"
 OCR_LANGS = "hin+eng"
 OUTPUT_JSON = "processed_documents_acts.json"
 PROGRESS_JSON = "processing_progress_acts.json"
