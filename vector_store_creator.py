@@ -41,7 +41,7 @@ class JSONDocumentProcessor:
             length_function=len,
             separators=["\n\n", "\n", ". ", " ", ""]
         )
-        self.supported_languages = ['ENGLISH', 'HINDI']  # English and Hindi only
+        self.supported_languages = ['EN', 'HI']  # English and Hindi only
 
     def extract_metadata_from_filename(self, filename: str) -> Dict[str, Any]:
         """Extract metadata from filename patterns"""
@@ -51,6 +51,7 @@ class JSONDocumentProcessor:
         year_patterns = [
             r'(\d{4})',  # 4-digit year
             r'Act.*?(\d{4})',  # Act followed by year
+            r'(\d{4}).*?Act',  # Year followed by Act
         ]
 
         for pattern in year_patterns:
@@ -61,7 +62,7 @@ class JSONDocumentProcessor:
 
         # Extract act name (remove file extension and common prefixes)
         act_name = filename.replace('.pdf', '').replace('.PDF', '')
-        act_name = re.sub(r'^(The\s)?', '', act_name)  # Remove "The" prefix
+        act_name = re.sub(r'^(The\s+)?', '', act_name)  # Remove "The" prefix
         metadata['act_name'] = act_name
         metadata['filename'] = filename
 
@@ -82,7 +83,7 @@ class JSONDocumentProcessor:
             # DD/MM/YYYY or DD-MM-YYYY
             r'(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})',
             # YYYY/MM/DD or YYYY-MM-DD
-            r'(\d{4})[\/\-](\d{1,2})[\/\-](\d{1})',
+            r'(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})',
         ]
 
         for pattern in date_patterns:
@@ -163,7 +164,7 @@ class JSONDocumentProcessor:
             filtered_documents = self.filter_documents_by_language(raw_documents)
             
             if not filtered_documents:
-                logger.warning("No documents found with supported languages (english, hindi)")
+                logger.warning("No documents found with supported languages (en, hi)")
                 return []
             
             processed_documents = []
