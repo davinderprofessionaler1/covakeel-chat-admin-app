@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+motor
+pydantic
+passlib[bcrypt]
+python-jose
+langchain
+langchain-community
+langchain-google-genai
+sentence-transformers
+python-dotenv
+pydantic[email]
