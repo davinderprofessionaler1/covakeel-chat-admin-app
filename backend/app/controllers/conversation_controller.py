@@ -1,3 +1,4 @@
+from datetime import timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.conversation import ConversationCreate, ConversationRead, ConversationUpdate
 from app.services import conversation_service
@@ -13,8 +14,8 @@ async def create_conversation(conv: ConversationCreate, user=Depends(get_current
         id=str(created._id),
         userId=str(created.userId),
         title=created.title,
-        createdAt=created.createdAt,
-        updatedAt=created.updatedAt
+        createdAt=created.createdAt.replace(tzinfo=timezone.utc).isoformat(),
+        updatedAt=created.updatedAt.replace(tzinfo=timezone.utc).isoformat()
     )
 
 @router.get("/", response_model=list[ConversationRead])
@@ -24,8 +25,8 @@ async def list_conversations(user=Depends(get_current_user)):
         id=str(c._id),
         userId=str(c.userId),
         title=c.title,
-        createdAt=c.createdAt,
-        updatedAt=c.updatedAt
+        createdAt=c.createdAt.replace(tzinfo=timezone.utc).isoformat(),
+        updatedAt=c.updatedAt.replace(tzinfo=timezone.utc).isoformat()
     ) for c in conversations]
 
 @router.get("/{conv_id}", response_model=ConversationRead)
@@ -37,8 +38,8 @@ async def get_conversation(conv_id: str, user=Depends(get_current_user)):
         id=str(conv._id),
         userId=str(conv.userId),
         title=conv.title,
-        createdAt=conv.createdAt,
-        updatedAt=conv.updatedAt
+        createdAt=conv.createdAt.replace(tzinfo=timezone.utc).isoformat(),
+        updatedAt=conv.updatedAt.replace(tzinfo=timezone.utc).isoformat()
     )
 
 @router.put("/{conv_id}", response_model=ConversationRead)
@@ -51,8 +52,8 @@ async def update_conversation(conv_id: str, conv_update: ConversationUpdate, use
         id=str(updated._id),
         userId=str(updated.userId),
         title=updated.title,
-        createdAt=updated.createdAt,
-        updatedAt=updated.updatedAt
+        createdAt=updated.createdAt.replace(tzinfo=timezone.utc).isoformat(),
+        updatedAt=updated.updatedAt.replace(tzinfo=timezone.utc).isoformat()
     )
 
 @router.delete("/{conv_id}", status_code=status.HTTP_204_NO_CONTENT)
