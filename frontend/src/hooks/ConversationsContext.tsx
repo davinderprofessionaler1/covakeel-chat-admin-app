@@ -17,7 +17,7 @@ export interface Message {
   createdAt: string;
 }
 
-const API_BASE_URL = 'http://localhost:8000'; // Replace with your actual API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 interface ConversationsContextType {
   conversations: Conversation[];
