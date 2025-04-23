@@ -421,7 +421,7 @@ def main():
     
     logger.info("Starting vector store creation from JSON process...")
 
-    JSON_FILE_PATH = os.getenv("JSON_FILE_PATH", "./processed_documents.json")
+    JSON_FILE_PATH = os.getenv("JSON_FILE_PATH", "./processed_documents_acts.json")
     PERSIST_DIR = os.getenv("PERSIST_DIR", "./chroma_db")
     BATCH_SIZE = int(os.getenv("BATCH_SIZE", 500))
 
