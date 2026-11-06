@@ -1,13 +1,13 @@
 # Build stage
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /usr/src/covakeel
 
 # Copy package files
-COPY package.json bun.lockb ./
+COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm install -g bun && bun install
+# Install the locked dependencies used by the local build
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -17,13 +17,13 @@ ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 # Build the application
-RUN bun run build
+RUN npm run build && test -s dist/index.html && test -s dist/app/index.html && test -s dist/admin/index.html
 
 # Production stage
 FROM nginx:alpine
 
 # Copy built files from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /usr/src/covakeel/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

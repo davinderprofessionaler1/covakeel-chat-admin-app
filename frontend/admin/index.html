@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#061f18">
+  <link rel="icon" href="/brand/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <title>Admin · CoVakeel</title>
+  <script>try{const t=localStorage.getItem('cv-theme');if(t==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Admin navigation">
+      <div class="side-top"><a class="brand" href="/"><img src="/brand/covakeel-logo-dark.svg" alt="CoVakeel"></a><span class="admin-tag">ADMIN WORKSPACE</span></div>
+      <nav class="nav" aria-label="Sections">
+        <a href="#overview" data-section="overview"><span class="nav-icon" aria-hidden="true">⌂</span><span>Overview</span></a>
+        <a href="#legal" data-section="legal"><span class="nav-icon" aria-hidden="true">⚖</span><span>Legal Knowledge<br>Management</span></a>
+        <a href="#knowledge" data-section="knowledge"><span class="nav-icon" aria-hidden="true">▤</span><span>Knowledge base</span></a>
+        <a href="#users" data-section="users"><span class="nav-icon" aria-hidden="true">♙</span><span>Users</span></a>
+        <a href="#conversations" data-section="conversations"><span class="nav-icon" aria-hidden="true">◫</span><span>Conversations</span></a>
+        <a href="#health" data-section="health"><span class="nav-icon" aria-hidden="true">◉</span><span>System health</span></a>
+        <a href="#settings" data-section="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Settings</span></a>
+      </nav>
+      <div class="side-foot"><div class="avatar" aria-hidden="true">C</div><div class="identity"><strong>CoVakeel</strong><small id="admin-email">Admin account</small></div><a href="/app/" class="exit" title="Open chat app" aria-label="Open chat app">↪</a></div>
+    </aside>
+    <main class="main" id="main">
+      <header class="topbar"><button id="menu-toggle" class="menu-toggle" type="button" aria-label="Toggle navigation">☰</button><span class="crumb">CoVakeel <span>/</span> Admin</span><div class="top-actions"><span class="local-pill">Local workspace</span><a href="/app/">Open app ↗</a></div></header>
+      <div class="content"><p class="eyebrow" id="section-eyebrow">ADMIN WORKSPACE</p><h1 id="section-title">Overview</h1><p class="intro" id="section-intro">A clear view of your legal knowledge workspace.</p><div id="notice" class="notice" role="status" hidden></div><div id="section-content" aria-live="polite"><div class="loading">Loading dashboard…</div></div></div>
+    </main>
+  </div>
+  <script type="module" src="/src/covakeel/admin.js"></script>
+</body>
+</html>

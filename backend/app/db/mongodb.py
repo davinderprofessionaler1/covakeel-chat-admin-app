@@ -1,10 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import Request
 from typing import AsyncGenerator
-import os
-
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-MONGODB_DB = os.getenv("MONGODB_DB", "rag_chatbot")
+from app.core.config import MONGODB_URI, MONGODB_DB
 
 class MongoDB:
     client: AsyncIOMotorClient = None
@@ -13,9 +10,9 @@ mongodb = MongoDB()
 
 def get_client() -> AsyncIOMotorClient:
     if not mongodb.client:
-        mongodb.client = AsyncIOMotorClient(MONGODB_URI)
+        mongodb.client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
     return mongodb.client
 
 def get_db():
     client = get_client()
-    return client[MONGODB_DB] 
+    return client[MONGODB_DB]

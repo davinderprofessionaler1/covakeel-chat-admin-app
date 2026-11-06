@@ -1,0 +1,80 @@
+name: covakeel-rag
+
+services:
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?Set MONGO_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - private
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://${MONGO_USERNAME:?Set MONGO_USERNAME in .env}:${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}@mongodb:27017/${MONGO_DB:-covakeel}?authSource=admin
+      MONGODB_DB: ${MONGO_DB:-covakeel}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?Set GOOGLE_API_KEY in .env}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-3.5-flash-lite}
+      CHROMA_DB_PATH: /app/chroma_db
+      ADMIN_UPLOAD_DIR: /admin_uploads
+      HF_HOME: /models/huggingface
+      ANONYMIZED_TELEMETRY: "False"
+    volumes:
+      - ./backend/chroma_db:/app/chroma_db
+      - ./.local/huggingface:/models/huggingface
+      - ./.local/admin-uploads:/admin_uploads
+    depends_on:
+      - mongodb
+    networks:
+      - private
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - private
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env}
+      TLS_EMAIL: ${TLS_EMAIL:?Set TLS_EMAIL in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/hostinger/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    networks:
+      - private
+
+networks:
+  private:
+
+volumes:
+  mongodb_data:
+  mongodb_config:
+  caddy_data:
+    external: true
+    name: deploy_caddy_data
+  caddy_config:
+    external: true
+    name: deploy_caddy_config

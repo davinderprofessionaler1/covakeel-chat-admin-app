@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#061f18">
+  <link rel="icon" href="/brand/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <title>Admin sign in · CoVakeel</title>
+  <script>try{const t=localStorage.getItem('cv-theme');if(t==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+</head>
+<body>
+  <header class="login-header"><a href="/" aria-label="CoVakeel home"><img src="/brand/covakeel-logo-dark.svg" alt="CoVakeel"></a><a href="/login">App sign in ↗</a></header>
+  <main class="login-main">
+    <section class="login-card" aria-labelledby="login-title">
+      <p class="eyebrow">ADMIN WORKSPACE</p>
+      <h1 id="login-title">Admin sign in</h1>
+      <p class="login-intro">Manage the legal knowledge available to CoVakeel.</p>
+      <form id="admin-login-form">
+        <label for="admin-email-input">Email</label>
+        <input id="admin-email-input" name="email" type="email" autocomplete="username" required autofocus>
+        <label for="admin-password-input">Password</label>
+        <input id="admin-password-input" name="password" type="password" autocomplete="current-password" required>
+        <p id="login-error" class="login-error" role="alert" hidden></p>
+        <button class="btn" id="login-button" type="submit">Sign in to admin ↗</button>
+      </form>
+    </section>
+  </main>
+  <script type="module" src="/src/covakeel/admin-login.js"></script>
+</body>
+</html>

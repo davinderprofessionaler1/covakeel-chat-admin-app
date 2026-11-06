@@ -9,7 +9,7 @@ async def create_conversation(user_id: str, conv_create: ConversationCreate):
     db = get_db()
     doc = {
         "userId": ObjectId(user_id),
-        "title": "Untitled",
+        "title": conv_create.title or "Untitled",
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
@@ -37,4 +37,4 @@ async def update_conversation(conv_id: str, conv_update: ConversationUpdate):
 
 async def delete_conversation(conv_id: str):
     db = get_db()
-    await db["conversations"].delete_one({"_id": ObjectId(conv_id)}) 
+    await db["conversations"].delete_one({"_id": ObjectId(conv_id)})

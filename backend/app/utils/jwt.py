@@ -1,8 +1,8 @@
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-import os
+from app.core.config import JWT_SECRET_KEY
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecret")
+SECRET_KEY = JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
 
@@ -18,4 +18,4 @@ def decode_access_token(token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
-        return None 
+        return None

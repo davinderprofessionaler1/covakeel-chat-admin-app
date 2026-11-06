@@ -129,20 +129,27 @@ export const ConversationsProvider = ({ children }: { children: ReactNode }) => 
           'Authorization': `Bearer ${token}`,
         },
       });
-      if (response.ok) {
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.detail || `Chat request failed (${response.status})`);
+      }
+      {
         const reader = response.body?.getReader();
         if (reader) {
           const decoder = new TextDecoder();
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value);
+            const chunk = decoder.decode(value, { stream: true });
             onChunk(chunk);
           }
+          const remaining = decoder.decode();
+          if (remaining) onChunk(remaining);
         }
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      throw error;
     }
   };
 
@@ -171,4 +178,4 @@ export const useConversationsContext = () => {
     throw new Error('useConversationsContext must be used within a ConversationsProvider');
   }
   return context;
-}; 
+};

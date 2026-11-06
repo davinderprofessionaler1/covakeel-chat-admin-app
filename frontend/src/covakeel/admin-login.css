@@ -1,0 +1,16 @@
+.login-header{height:86px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 max(24px,5vw);border-bottom:1px solid var(--line);background:var(--side)}
+.login-header img{display:block;width:152px;height:48px;object-fit:contain;object-position:left center}
+.login-header>a:last-child{color:var(--gold);font-size:14px;font-weight:600}
+.login-main{min-height:calc(100vh - 86px);display:grid;place-items:center;padding:28px 20px 72px;background:radial-gradient(circle at 50% 30%,rgba(217,179,106,.075),transparent 46%),var(--main)}
+.login-card{width:min(100%,440px);padding:40px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.12);animation:login-enter .45s ease-out both}
+.login-card h1{font:600 40px/1.1 "Source Serif 4",Georgia,serif;color:var(--ink);margin:0 0 10px}
+.login-intro{color:var(--muted);margin:0 0 29px}
+.login-card form{display:flex;flex-direction:column}
+.login-card label{color:var(--ink);font-size:14px;font-weight:600;margin:0 0 7px}
+.login-card input{width:100%;height:47px;padding:0 13px;margin:0 0 20px;color:var(--ink);background:var(--main);border:1px solid var(--line);border-radius:8px;outline:none}
+.login-card input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--hover)}
+.login-card .btn{width:100%;margin-top:5px}
+.login-error{color:var(--danger);font-size:14px;margin:0 0 15px}
+@keyframes login-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:520px){.login-header{height:72px}.login-header img{width:130px}.login-main{min-height:calc(100vh - 72px)}.login-card{padding:28px}.login-card h1{font-size:34px}}
+@media(prefers-reduced-motion:reduce){.login-card{animation:none}}

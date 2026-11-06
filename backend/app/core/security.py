@@ -12,4 +12,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = await get_user_by_id(payload["sub"])
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return user 
+    return user
+
+
+async def get_current_admin(token: str = Depends(oauth2_scheme), user=Depends(get_current_user)):
+    payload = decode_access_token(token)
+    if not getattr(user, "is_admin", False) or not payload or payload.get("scope") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user

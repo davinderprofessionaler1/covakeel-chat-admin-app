@@ -1,3 +1,26 @@
+# CoVakeel frontend
+
+The active frontend uses the provided CoVakeel website and app HTML/CSS directly,
+including the original dot-tunnel canvas, reveal animations, responsive sidebar,
+forms, and light/dark tokens. It runs through Vite as a two-page application.
+
+- `index.html`: public website and inline/modal login/signup design.
+- `app/index.html`: authenticated app, chat, search, profile, and appearance.
+- `src/covakeel/api.js`: shared real FastAPI/JWT requests; no Gemini key is sent to the browser.
+- `src/covakeel/auth.js`: real email/password signup and email or username login.
+- `src/covakeel/app.js`: real conversations, unchanged AI response text, and actual retrieved sources.
+- `public/brand`: supplied SVG logos and favicon/app icons.
+
+Run `npm run dev -- --host 127.0.0.1 --port 8081 --strictPort` or use the
+repository's `scripts/start_local.sh`. Build with `npm run build`.
+Legacy `/login`, `/register`, `/chat/:id`, and `/profile` links continue to work.
+
+Google/SMS sign-in, payments, the product film, and final policy/contact content
+were not configured by the existing project. Their designs remain present with
+honest unavailable states. Device-only saved answers/projects are scoped by user;
+account/profile and chat data persist in MongoDB. Existing React source files are
+retained, but the new pages are the active build inputs.
+
 # Welcome to your Lovable project
 
 ## Project info

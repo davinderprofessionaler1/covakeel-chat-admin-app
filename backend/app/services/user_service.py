@@ -4,12 +4,13 @@ from app.schemas.user import UserCreate, UserUpdate
 from app.utils.hashing import hash_password
 from bson import ObjectId
 from typing import Optional
+from datetime import datetime
 
 async def create_user(user_create: UserCreate):
     db = get_db()
     user_dict = user_create.dict()
     user_dict["hashed_password"] = hash_password(user_dict.pop("password"))
-    user_dict["createdAt"] = user_dict.get("createdAt")
+    user_dict["createdAt"] = datetime.utcnow()
     user_dict["email"] = user_dict.get("email")
     result = await db["users"].insert_one(user_dict)
     return str(result.inserted_id)
@@ -38,4 +39,16 @@ async def update_user(user_id: str, user_update: UserUpdate):
 
 async def delete_user(user_id: str):
     db = get_db()
-    await db["users"].delete_one({"_id": ObjectId(user_id)}) 
+    await db["users"].delete_one({"_id": ObjectId(user_id)})
+
+
+async def get_user_by_login(identifier: str) -> Optional[User]:
+    """Accept existing usernames and the email address shown by the new design."""
+    import re
+    db = get_db()
+    identifier = identifier.strip()
+    data = await db["users"].find_one({"$or": [
+        {"username": identifier},
+        {"email": {"$regex": "^" + re.escape(identifier) + "$", "$options": "i"}},
+    ]})
+    return User(**data) if data else None

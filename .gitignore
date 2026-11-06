@@ -55,3 +55,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local services, downloaded models, corpus, and generated indexes
+.local/
+backend/chroma_db/
+vector-store/pdf-downloading/acts_pdf/
+vector-store/pdfs_preprocessing/acts_pdf/
+processed_documents*.json
+processing_progress*.json
+output/

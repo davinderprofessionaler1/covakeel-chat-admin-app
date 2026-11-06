@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.message import MessageCreate, MessageRead
-from app.services import message_service, conversation_service
+from app.services import message_service, conversation_service, source_service
+from app.schemas.source import SourceRead
 from app.core.security import get_current_user
 
 router = APIRouter(prefix="/messages", tags=["messages"])
@@ -59,4 +60,17 @@ async def delete_message(msg_id: str, user=Depends(get_current_user)):
     if not conv or str(conv.userId) != str(user._id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     await message_service.delete_message(msg_id)
-    return None 
+    return None
+
+@router.get("/{msg_id}/sources", response_model=list[SourceRead])
+async def get_message_sources(msg_id: str, user=Depends(get_current_user)):
+    msg = await message_service.get_message_by_id(msg_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    conv = await conversation_service.get_conversation_by_id(str(msg.conversationId))
+    if not conv or str(conv.userId) != str(user._id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    sources = await source_service.list_sources_by_message(msg_id)
+    return [SourceRead(id=str(s._id), messageId=str(s.messageId), filename=s.filename,
+                       content=s.content, metadata=s.metadata, createdAt=s.createdAt)
+            for s in sources]

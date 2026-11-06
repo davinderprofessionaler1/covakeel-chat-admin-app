@@ -10,11 +10,20 @@ import asyncio
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def require_chat_configuration():
+    try:
+        rag_service.ensure_rag_configured()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
 @router.post("/", response_model=MessageRead)
 async def chat(conversationId: str, text: str, user=Depends(get_current_user)):
     conv = await conversation_service.get_conversation_by_id(conversationId)
     if not conv or str(conv.userId) != str(user._id):
         raise HTTPException(status_code=404, detail="Conversation not found")
+
+    require_chat_configuration()
 
     # Get chat history
     messages = await message_service.list_messages_by_conversation(conversationId)
@@ -53,6 +62,8 @@ async def chat_stream(
     conv = await conversation_service.get_conversation_by_id(conversationId)
     if not conv or str(conv.userId) != str(user._id):
         raise HTTPException(status_code=404, detail="Conversation not found")
+
+    require_chat_configuration()
 
     # Get chat history
     messages = await message_service.list_messages_by_conversation(conversationId)

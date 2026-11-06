@@ -6,6 +6,71 @@ The live project is hosted at: [india-law-a-rag](https://lawbot-frontend.netlify
 
 ---
 
+## Local setup for this checkout
+
+The local Python environment, CPU embedding dependencies, MongoDB binary, and private
+`backend/.env` configuration are prepared in this workspace. Service data and model
+caches stay under `.local/`; the Chroma index stays under `backend/chroma_db/`.
+
+1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/apikey)
+   and put it in `backend/.env` as `GOOGLE_API_KEY=...`. Keep this file private.
+   `GOOGLE_MODEL` defaults to `gemini-3.5-flash-lite` and can be changed there.
+2. Build the starter index, without needing a Gemini key:
+   ```bash
+   backend/.venv/bin/python scripts/index_local.py
+   ```
+   This indexes the **RTI Act PDF from the Central Information Commission** and
+   **two CGST Act PDFs from the GST Council** (the 2017 Act and the Jammu and
+   Kashmir extension Act). It is a starter corpus for testing, not a complete or
+   verified-current Indian law collection. To index your own text-based PDFs, use:
+   ```bash
+   backend/.venv/bin/python scripts/index_local.py --pdf-dir /absolute/path/to/pdfs
+   ```
+   Scanned PDFs need the original OCR pipeline and Tesseract with English/Hindi
+   language data. Repeated indexing of the same PDF uses stable IDs.
+3. Start local services from the repository root:
+   ```bash
+   bash scripts/start_local.sh
+   ```
+   Frontend: <http://127.0.0.1:8081> · API docs: <http://127.0.0.1:8000/docs>
+   Stop an earlier running app before starting another. Ctrl+C stops services
+   started by this script; an already-running MongoDB instance is reused.
+   To open the app from another computer on the same Wi-Fi, set
+   `VITE_API_BASE_URL=/api` in `frontend/.env`, then start with:
+   ```bash
+   FRONTEND_HOST=0.0.0.0 bash scripts/start_local.sh
+   ```
+   Open `http://<this-computer-LAN-IP>:8081` on the other computer. The Vite proxy
+   forwards API requests; MongoDB and FastAPI keep listening on localhost.
+4. Register your own account in the frontend. Without the Gemini key, registration,
+   login, and conversations work; chat returns a clear setup error. After changing
+   the key, restart the backend. Check <http://127.0.0.1:8000/> for configuration status.
+
+Local admin preview: open <http://127.0.0.1:8081/admin/>. It uses a separate
+sign-in page at <http://127.0.0.1:8081/admin/login/> and a separate admin
+session from the chat app. Sign in with
+`covakeel@gmail.com`. The generated local-only password is stored in
+`.local/admin-access.txt` (mode 600); do not paste it into chat or commit it.
+The admin dashboard has Overview, Legal Knowledge Management, Knowledge base,
+Users, Conversations, System health, and Settings. Admins can upload text-based
+PDFs up to 20 MB. The backend indexes them in the existing Chroma collection;
+re-uploading the same filename replaces its earlier passages for new answers.
+Scanned PDFs need OCR before upload. Removing a document removes its passages
+from future retrieval, while existing chat history remains as it was.
+Admin permission is stored in MongoDB and cannot be gained through signup.
+This admin work is local only; it has not been deployed to the Hostinger VPS.
+
+Backend regression checks:
+```bash
+cd backend
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m pip check
+```
+
+`backend/requirements-local.lock.txt` records the resolved Ubuntu 24.04 / Python 3.12
+packages, including CPU PyTorch. MongoDB logs are in `.local/logs/mongodb.log`.
+The starter source is <https://cic.gov.in/sites/default/files/RTI_English.pdf>.
+
 ## 🎯 Project Overview
 
 This project represents a sophisticated RAG implementation that goes beyond basic Q&A systems. It tackles the unique challenges of processing Indian legal documents—spanning multiple languages (English and Hindi), diverse formats, and complex legislative structures—to deliver a production-ready legal chatbot.
@@ -88,7 +153,7 @@ This project represents a sophisticated RAG implementation that goes beyond basi
 - **Google Gemini 2.5-flash** as the LLM backbone:
   - Temperature: 0.4 for balanced creativity and accuracy
   - System message to human message conversion for compatibility
-  
+
 #### Conversation Buffer Memory
 - **Persistent conversation state** using LangChain's ConversationBufferMemory
 - Message history stored as `HumanMessage` and `AIMessage` objects
@@ -746,8 +811,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📞 Contact
 
-**Developer**: Pankil Soni  
-**GitHub**: [@pankil-soni](https://github.com/pankil-soni)  
+**Developer**: Pankil Soni
+**GitHub**: [@pankil-soni](https://github.com/pankil-soni)
 **Project Repository**: [india-law-ai-rag](https://github.com/pankil-soni/india-law-ai-rag)
 
 ---
