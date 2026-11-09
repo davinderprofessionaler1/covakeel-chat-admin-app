@@ -178,19 +178,18 @@ async function start() {
   const loginUrl = '/admin/login/?next=' + encodeURIComponent(location.pathname + location.hash);
   if (!adminToken()) { location.replace(loginUrl); return; }
   try {
-    const user = await api('/users/me');
-    $('#admin-email').textContent = user.email || user.username;
-    if (!user.isAdmin) {
-      $('#section-content').innerHTML = `<div class="empty"><strong>Admin access required</strong><p>Signed in as ${esc(user.email || user.username)}. Use the CoVakeel admin account to continue.</p><button class="btn" id="switch-account" type="button">Switch account</button></div>`;
-      $('#switch-account').onclick = () => {
-        localStorage.removeItem('cv-admin-token');
-        location.assign(loginUrl);
-      };
-      return;
-    }
+    const settings = await api('/admin/settings');
+    $('#admin-email').textContent = settings.adminEmail || 'Admin account';
     window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
     $('#menu-toggle').onclick = () => $('.sidebar').classList.toggle('open');
+    $('#sidebar-signout').onclick = signout;
     navigate(location.hash.slice(1) || 'overview');
-  } catch { location.replace(loginUrl); }
+  } catch {
+    localStorage.removeItem('cv-admin-token');
+    location.replace(loginUrl);
+  }
 }
+window.addEventListener('pageshow', () => {
+  if (!adminToken()) location.replace('/admin/login/');
+});
 start();

@@ -2,6 +2,31 @@ import './auth.js';
 import './integration.css';
 import { api } from './api.js';
 
+const themeButton = document.querySelector('#site-theme-toggle');
+const themePreference = window.matchMedia('(prefers-color-scheme: light)');
+const activeTheme = () => document.documentElement.dataset.theme || (themePreference.matches ? 'light' : 'dark');
+function updateThemeButton() {
+  if (!themeButton) return;
+  const action = activeTheme() === 'light' ? 'Dark mode' : 'Light mode';
+  themeButton.querySelector('.theme-icon').textContent = action === 'Dark mode' ? '☾' : '☀';
+  themeButton.querySelector('.theme-label').textContent = action;
+  themeButton.setAttribute('aria-label', `Switch to ${action.toLowerCase()}`);
+}
+themeButton?.addEventListener('click', () => {
+  const next = activeTheme() === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('cv-theme', next);
+  updateThemeButton();
+});
+themePreference.addEventListener('change', updateThemeButton);
+window.addEventListener('storage', (event) => {
+  if (event.key !== 'cv-theme') return;
+  if (event.newValue === 'light' || event.newValue === 'dark') document.documentElement.dataset.theme = event.newValue;
+  else delete document.documentElement.dataset.theme;
+  updateThemeButton();
+});
+updateThemeButton();
+
 const legacy = location.pathname;
 if (legacy.startsWith('/chat/')) location.replace('/app/#' + (legacy.endsWith('/new') ? 'new' : 'chat/' + encodeURIComponent(legacy.split('/').pop())));
 if (legacy === '/profile') location.replace('/app/#profile');

@@ -1,10 +1,16 @@
 import './admin.css';
 import './admin-login.css';
-import { adminLogin, adminToken } from './admin-api.js';
+import { adminApi, adminLogin, adminToken } from './admin-api.js';
 
 const next = new URLSearchParams(location.search).get('next');
 const destination = next?.startsWith('/admin/') && !next.startsWith('/admin/login/') ? next : '/admin/';
-if (adminToken()) location.replace(destination);
+if (new URLSearchParams(location.search).has('signed_out')) {
+  localStorage.removeItem('cv-admin-token');
+} else if (adminToken()) {
+  adminApi('/admin/settings').then(() => location.replace(destination)).catch(() => {
+    localStorage.removeItem('cv-admin-token');
+  });
+}
 
 const form = document.querySelector('#admin-login-form');
 const errorNode = document.querySelector('#login-error');

@@ -41,5 +41,5 @@ export async function adminLogin(email, password) {
 
 export function adminSignout() {
   localStorage.removeItem(TOKEN_KEY);
-  location.assign('/admin/login/');
+  location.replace('/admin/login/?signed_out=1');
 }
