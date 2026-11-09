@@ -57,6 +57,7 @@ def retrieve_documents(vector_store, question, limit=10):
     reflected immediately, including replacements that do not change the count.
     """
     terms = list(dict.fromkeys(_terms(question)))
+    act_acronyms = set(terms) & {"bns", "bnss"}
     source_clause = re.search(r"\bunder\s+(?:the\s+)?(.+?)\s*\??$", question, re.IGNORECASE)
     source_terms = set(_terms(source_clause.group(1))) if source_clause else set()
     search_terms = list(dict.fromkeys(terms + [alias for term in terms for alias in SEARCH_ALIASES.get(term, ())]))
@@ -87,6 +88,10 @@ def retrieve_documents(vector_store, question, limit=10):
             idf = math.log(1 + (len(records) + 1) / (frequencies[term] + 1))
             weight = 1 if term in terms else 0.6
             score += weight * idf * (min(text_terms[term], 3) + (2 if term in title_terms else 0))
+        if metadata.get("page") == 1 and any(
+            _title_initialism(metadata).startswith(acronym) for acronym in act_acronyms
+        ):
+            score += 100
         if "late" in terms and ("filing" in terms or "penalties" in terms):
             if re.search(r"\blate\s+fees?\b", content, re.IGNORECASE) and re.search(
                 r"\b(?:returns?|furnish(?:ed)?)\b", content, re.IGNORECASE

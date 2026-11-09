@@ -142,6 +142,23 @@ class ConversationIsolationTests(unittest.TestCase):
 
 
 class HybridRetrievalTests(unittest.TestCase):
+    def test_bns_bnss_topic_uses_both_acts_opening_pages(self):
+        snapshot = {"documents": [
+            "Criminal law can apply to companies.",
+            "THE BHARATIYA NYAYA SANHITA, 2023. An Act relating to offences.",
+            "THE BHARATIYA NAGARIK SURAKSHA SANHITA, 2023. An Act relating to criminal procedure.",
+        ], "metadatas": [
+            {"filename": "companies.pdf", "title": "The Companies Act, 2013", "page": 87},
+            {"filename": "bns.pdf", "title": "The Bharatiya Nyaya Sanhita, 2023", "page": 1},
+            {"filename": "bnss.pdf", "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023", "page": 1},
+        ]}
+        store = SimpleNamespace(
+            _collection=SimpleNamespace(get=lambda **_: snapshot),
+            similarity_search_with_relevance_scores=lambda *_, **__: [],
+        )
+        result = retrieve_documents(store, "Criminal Law (BNS & BNSS Test)")
+        self.assertEqual({doc.metadata["filename"] for doc in result[:2]}, {"bns.pdf", "bnss.pdf"})
+
     def test_contract_definition_under_named_act_beats_incidental_contract_use(self):
         incidental = "A contingent contract is a contract to do something later. Contract contract contract."
         definition = "(h) An agreement enforceable by law is a contract."
