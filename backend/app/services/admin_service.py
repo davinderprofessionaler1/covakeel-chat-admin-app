@@ -55,9 +55,15 @@ async def seed_documents():
     for item in sources:
         if not item.get("filename") or not item.get("sha256"):
             continue
+        source_url = item.get("source_url") or item.get("source")
+        metadata = {}
+        if item.get("title"):
+            metadata["title"] = item["title"]
+        if source_url and source_url.startswith("https://"):
+            metadata["source_url"] = source_url
         await get_db().admin_documents.update_one(
             {"_id": "seed:" + item["sha256"][:24]},
-            {"$setOnInsert": {
+            {"$set": metadata, "$setOnInsert": {
                 "filename": item["filename"], "sha256": item["sha256"],
                 "status": "indexed", "origin": "starter", "size": 0,
                 "pages": item.get("pages", 0), "chunks": item.get("chunks", 0),

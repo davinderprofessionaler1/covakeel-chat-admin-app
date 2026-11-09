@@ -36,11 +36,14 @@ function badge(status) {
 
 function documentRows(documents, actions = false) {
   if (!documents.length) return '<div class="empty"><strong>No documents yet</strong>Upload a text-based PDF to build the knowledge base.</div>';
-  return `<div class="table-wrap"><table><thead><tr><th>Document</th><th>Status</th><th>Pages</th><th>Chunks</th><th>Added</th>${actions ? '<th>Action</th>' : ''}</tr></thead><tbody>${documents.map((doc) => `<tr>
-    <td class="name">${esc(doc.title || doc.filename)}<div class="secondary">${esc(doc.filename)}</div>${doc.sourceUrl ? `<div class="secondary"><a href="${esc(doc.sourceUrl)}" target="_blank" rel="noopener noreferrer">Official source ↗</a></div>` : ''}${doc.error ? `<div class="secondary">${esc(doc.error)}</div>` : ''}</td>
+  return `<div class="table-wrap"><table><thead><tr><th>Document</th><th>Status</th><th>Pages</th><th>Chunks</th><th>Added</th>${actions ? '<th>Action</th>' : ''}</tr></thead><tbody>${documents.map((doc) => {
+    const sourceUrl = /^https:\/\//i.test(doc.sourceUrl || '') ? esc(doc.sourceUrl) : '';
+    const title = esc(doc.title || doc.filename);
+    return `<tr>
+    <td class="name">${sourceUrl ? `<a class="document-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer" aria-label="Open PDF: ${title}">${title}</a>` : title}<div class="secondary">${esc(doc.filename)}</div>${sourceUrl ? `<div class="secondary"><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">Official source ↗</a></div>` : ''}${doc.error ? `<div class="secondary">${esc(doc.error)}</div>` : ''}</td>
     <td>${badge(doc.status)}</td><td>${count(doc.pages)}</td><td>${count(doc.chunks)}</td><td>${date(doc.createdAt)}</td>
     ${actions ? `<td><button class="btn danger small" type="button" data-remove="${esc(doc.id)}" ${doc.status === 'processing' ? 'disabled' : ''}>Remove</button></td>` : ''}
-  </tr>`).join('')}</tbody></table></div>`;
+  </tr>`; }).join('')}</tbody></table></div>`;
 }
 
 function renderOverview(summary, documents) {
