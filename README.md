@@ -58,8 +58,11 @@ re-uploading the same filename replaces its earlier passages for new answers.
 Scanned PDFs need OCR before upload. Removing a document removes its passages
 from future retrieval, while existing chat history remains as it was.
 Admin permission is stored in MongoDB and cannot be gained through signup.
-The Hostinger build disables admin pages and API routes; the admin workspace
-remains available only in local development.
+The Hostinger deployment serves the admin sign-in at
+<https://srv2082168.hstgr.cloud/admin/login/> and the admin workspace at
+<https://srv2082168.hstgr.cloud/admin/>. The admin session stays separate from
+the chat app. Only accounts granted `is_admin` in MongoDB can sign in; normal
+signup does not grant admin access.
 
 Backend regression checks:
 ```bash

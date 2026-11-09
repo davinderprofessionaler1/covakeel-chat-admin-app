@@ -6,9 +6,11 @@ website and app, FastAPI/Gemini, MongoDB, and the Chroma index on that VPS.
 Only Caddy publishes ports 80 and 443. Nginx serves both frontend pages and
 forwards `/api/` to FastAPI. MongoDB and FastAPI are private Docker services.
 
-The Hostinger Compose build sets `ENABLE_ADMIN=false` and
-`VITE_INCLUDE_ADMIN=false`. Caddy returns 404 for admin pages and API routes.
-The local checkout still supports its separate admin workspace.
+The Hostinger Compose build enables the admin pages and API routes. Admins
+sign in separately at `https://srv2082168.hstgr.cloud/admin/login/` and use
+`https://srv2082168.hstgr.cloud/admin/`. The backend grants access only to
+accounts marked `is_admin` in MongoDB, using an admin-scoped token. Normal
+signup cannot create an admin account.
 
 The former `/opt/covakeel` stack used the same domain. Its PostgreSQL data,
 files, and Docker volumes should be kept as a rollback backup. Stop it with
@@ -20,7 +22,7 @@ Pull the application source from the CoVakeel Git repository into
 `/opt/covakeel-rag`. Keep the existing private `.env`, Chroma index,
 embedding cache, MongoDB volumes, and user uploads in place. Do not replace
 those persistent data paths with files from Git.
-`backend/chroma_db/local_manifest.json` should list the RTI and two GST Acts.
+`backend/chroma_db/local_manifest.json` lists the starter legal sources.
 
 Create `/opt/covakeel-rag/.env` from `.env.example` with strong random MongoDB
 and JWT secrets and the Gemini key. Keep it mode 600. Set `APP_DOMAIN` to
@@ -59,5 +61,5 @@ docker compose --env-file .env -f compose.hostinger.yml up -d caddy
 
 The new Caddy uses the existing `deploy_caddy_data` certificate volume, so
 the default domain keeps its TLS certificate. Verify the HTTPS homepage,
-`/app/`, `/api/`, account login/signup, and a sourced GST answer. The old
+`/app/`, `/admin/login/`, `/api/`, account login/signup, and a sourced GST answer. The old
 stack can be restarted from its original Compose file if rollback is needed.
