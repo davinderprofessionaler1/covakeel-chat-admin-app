@@ -15,9 +15,12 @@ COPY . .
 # Accept build arguments
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ARG VITE_INCLUDE_ADMIN=true
+ENV VITE_INCLUDE_ADMIN=${VITE_INCLUDE_ADMIN}
 
 # Build the application
-RUN npm run build && test -s dist/index.html && test -s dist/app/index.html && test -s dist/admin/index.html
+RUN npm run build && test -s dist/index.html && test -s dist/app/index.html \
+    && if [ "$VITE_INCLUDE_ADMIN" = "false" ]; then test ! -e dist/admin/index.html; else test -s dist/admin/index.html; fi
 
 # Production stage
 FROM nginx:alpine

@@ -6,15 +6,20 @@ website and app, FastAPI/Gemini, MongoDB, and the Chroma index on that VPS.
 Only Caddy publishes ports 80 and 443. Nginx serves both frontend pages and
 forwards `/api/` to FastAPI. MongoDB and FastAPI are private Docker services.
 
+The Hostinger Compose build sets `ENABLE_ADMIN=false` and
+`VITE_INCLUDE_ADMIN=false`. Caddy returns 404 for admin pages and API routes.
+The local checkout still supports its separate admin workspace.
+
 The former `/opt/covakeel` stack used the same domain. Its PostgreSQL data,
 files, and Docker volumes should be kept as a rollback backup. Stop it with
 `docker compose ... down` **without `-v`** only after testing the new stack.
 
 ## Transfer and stage
 
-Copy this checkout, including its uncommitted frontend changes, plus the
-ignored Chroma index and embedding cache into `/opt/covakeel-rag`. Exclude
-local `.env` files, `.git`, node_modules, and the local MongoDB data folder.
+Pull the application source from the CoVakeel Git repository into
+`/opt/covakeel-rag`. Keep the existing private `.env`, Chroma index,
+embedding cache, MongoDB volumes, and user uploads in place. Do not replace
+those persistent data paths with files from Git.
 `backend/chroma_db/local_manifest.json` should list the RTI and two GST Acts.
 
 Create `/opt/covakeel-rag/.env` from `.env.example` with strong random MongoDB

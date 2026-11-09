@@ -58,7 +58,8 @@ re-uploading the same filename replaces its earlier passages for new answers.
 Scanned PDFs need OCR before upload. Removing a document removes its passages
 from future retrieval, while existing chat history remains as it was.
 Admin permission is stored in MongoDB and cannot be gained through signup.
-This admin work is local only; it has not been deployed to the Hostinger VPS.
+The Hostinger build disables admin pages and API routes; the admin workspace
+remains available only in local development.
 
 Backend regression checks:
 ```bash

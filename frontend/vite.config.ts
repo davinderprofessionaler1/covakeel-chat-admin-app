@@ -31,8 +31,10 @@ export default defineConfig(({ mode }) => ({
       input: {
         website: path.resolve(__dirname, "index.html"),
         app: path.resolve(__dirname, "app/index.html"),
-        admin: path.resolve(__dirname, "admin/index.html"),
-        adminLogin: path.resolve(__dirname, "admin/login/index.html"),
+        ...(process.env.VITE_INCLUDE_ADMIN === "false" ? {} : {
+          admin: path.resolve(__dirname, "admin/index.html"),
+          adminLogin: path.resolve(__dirname, "admin/login/index.html"),
+        }),
       },
     },
   },

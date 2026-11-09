@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from bson.errors import InvalidId
 from fastapi.responses import JSONResponse
 
-from app.core.config import CORS_ORIGINS
+from app.core.config import CORS_ORIGINS, ENABLE_ADMIN
 from app.db.mongodb import get_db, mongodb
 from app.services.rag_service import get_rag_status, shutdown_executor
 from app.routes.user_routes import user_routes
@@ -14,8 +14,9 @@ from app.routes.auth_routes import auth_routes
 from app.routes.conversation_routes import conversation_routes
 from app.routes.message_routes import message_routes
 from app.routes.chat_routes import chat_routes
-from app.controllers.admin_controller import router as admin_routes
-from app.services.admin_service import seed_documents, recover_interrupted_uploads
+if ENABLE_ADMIN:
+    from app.controllers.admin_controller import router as admin_routes
+    from app.services.admin_service import seed_documents, recover_interrupted_uploads
 
 
 @asynccontextmanager
@@ -25,8 +26,9 @@ async def lifespan(app):
     await db.users.create_index("username", unique=True)
     await db.conversations.create_index([("userId", 1), ("updatedAt", -1)])
     await db.messages.create_index([("conversationId", 1), ("createdAt", 1)])
-    await seed_documents()
-    await recover_interrupted_uploads()
+    if ENABLE_ADMIN:
+        await seed_documents()
+        await recover_interrupted_uploads()
     try:
         yield
     finally:
@@ -37,8 +39,10 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Indian Law Acts RAG Chatbot API", lifespan=lifespan)
-for router in [user_routes, auth_routes, conversation_routes, message_routes, chat_routes, admin_routes]:
+for router in [user_routes, auth_routes, conversation_routes, message_routes, chat_routes]:
     app.include_router(router)
+if ENABLE_ADMIN:
+    app.include_router(admin_routes)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,

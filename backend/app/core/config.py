@@ -19,6 +19,7 @@ if len(JWT_SECRET_KEY) < 32:
 _chroma_path = Path(os.getenv("CHROMA_DB_PATH", "chroma_db"))
 CHROMA_DB_PATH = _chroma_path if _chroma_path.is_absolute() else BACKEND_DIR / _chroma_path
 ADMIN_UPLOAD_DIR = Path(os.getenv("ADMIN_UPLOAD_DIR", str(BACKEND_DIR.parent / ".local" / "admin-uploads")))
+ENABLE_ADMIN = os.getenv("ENABLE_ADMIN", "true").strip().lower() not in {"0", "false", "no", "off"}
 CORS_ORIGINS = [origin.strip() for origin in os.getenv(
     "CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081"
 ).split(",") if origin.strip()]

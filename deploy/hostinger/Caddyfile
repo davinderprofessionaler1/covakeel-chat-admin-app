@@ -4,5 +4,9 @@
 
 {$APP_DOMAIN} {
     encode zstd gzip
+    @admin path /admin /admin/* /api/admin /api/admin/* /api/auth/admin/*
+    handle @admin {
+        respond 404
+    }
     reverse_proxy frontend:80
 }

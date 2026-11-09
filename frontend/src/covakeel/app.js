@@ -331,7 +331,7 @@ import './integration.css';
     $('.cc-c', fi).textContent = country.value;
   }
   hydrateAccount();
-  if (account.isAdmin) {
+  if (account.isAdmin && import.meta.env.VITE_INCLUDE_ADMIN !== 'false') {
     const link = document.createElement('a');
     link.className = 'um-i';
     link.href = '/admin/';
