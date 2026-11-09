@@ -9,7 +9,6 @@ function updateThemeButton() {
   if (!themeButton) return;
   const action = activeTheme() === 'light' ? 'Dark mode' : 'Light mode';
   themeButton.querySelector('.theme-icon').textContent = action === 'Dark mode' ? '☾' : '☀';
-  themeButton.querySelector('.theme-label').textContent = action;
   themeButton.setAttribute('aria-label', `Switch to ${action.toLowerCase()}`);
 }
 themeButton?.addEventListener('click', () => {
