@@ -57,6 +57,9 @@ def retrieve_documents(vector_store, question, limit=10):
     reflected immediately, including replacements that do not change the count.
     """
     terms = list(dict.fromkeys(_terms(question)))
+    finance_act = re.search(r"\bfinance\s+act(?:\s+of)?\s*,?\s*(20\d{2})\b", question, re.IGNORECASE)
+    named_section = re.search(r"\bsection\s+(\d{1,3}[a-z]?)\b", question, re.IGNORECASE)
+    finance_section = (finance_act.group(1), named_section.group(1)) if finance_act and named_section else None
     act_acronyms = set(terms) & {"bns", "bnss"}
     source_clause = re.search(r"\bunder\s+(?:the\s+)?(.+?)\s*\??$", question, re.IGNORECASE)
     source_terms = set(_terms(source_clause.group(1))) if source_clause else set()
@@ -88,6 +91,12 @@ def retrieve_documents(vector_store, question, limit=10):
             idf = math.log(1 + (len(records) + 1) / (frequencies[term] + 1))
             weight = 1 if term in terms else 0.6
             score += weight * idf * (min(text_terms[term], 3) + (2 if term in title_terms else 0))
+        if finance_section:
+            year, section = finance_section
+            source_name = metadata.get("title") or metadata.get("filename", "")
+            if ("finance" in _terms(source_name) and year in _terms(source_name)
+                    and re.search(rf"(?m)^\s*{re.escape(section)}\.\s+", content, re.IGNORECASE)):
+                score += 300
         if metadata.get("page") == 1 and any(
             _title_initialism(metadata).startswith(acronym) for acronym in act_acronyms
         ):

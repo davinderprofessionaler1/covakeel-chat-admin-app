@@ -153,6 +153,23 @@ class ConversationIsolationTests(unittest.TestCase):
 
 
 class HybridRetrievalTests(unittest.TestCase):
+    def test_named_finance_act_section_surfaces_amendment_in_punjabi_question(self):
+        unrelated = "Section 16(4) concerns tax invoices and debit notes."
+        amendment = '120. In section 16 of the Central Goods and Services Tax Act, in sub-section (4), the words “invoice relating to such” shall be omitted.'
+        other_year = "120. A different amendment in Finance Act 2021."
+        snapshot = {"documents": [unrelated, amendment, other_year], "metadatas": [
+            {"filename": "cgst.pdf", "page": 18},
+            {"filename": "finance_act_2020.pdf", "page": 56},
+            {"filename": "finance_act_2021.pdf", "page": 50},
+        ]}
+        store = SimpleNamespace(
+            _collection=SimpleNamespace(get=lambda **_: snapshot),
+            similarity_search_with_relevance_scores=lambda *_, **__: [],
+        )
+        result = retrieve_documents(store, "Finance Act 2020 de Section 120 ne CGST Section 16(4) vich ki change kita? Ki debit note de ITC di time limit original invoice di date naal linked rehndi hai?")
+        self.assertEqual(result[0].metadata["filename"], "finance_act_2020.pdf")
+        self.assertEqual(result[0].metadata["page"], 56)
+
     def test_bns_bnss_topic_uses_both_acts_opening_pages(self):
         snapshot = {"documents": [
             "Criminal law can apply to companies.",
