@@ -56,6 +56,17 @@ class AdminLoginIsolationTests(unittest.TestCase):
 
 
 class ConversationIsolationTests(unittest.TestCase):
+    def test_bns_bnss_topic_label_requests_an_overview(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        seen = []
+        def invoke(payload):
+            seen.append(payload["input"])
+            return {"answer": "I could not find the answer in the indexed documents.", "context": []}
+        rag.rag_chain = SimpleNamespace(invoke=invoke)
+        result = rag.ask("Criminal Law (BNS & BNSS Test)")
+        self.assertEqual(result["question"], "Criminal Law (BNS & BNSS Test)")
+        self.assertEqual(seen, ["Give a brief overview of BNS and BNSS based on the indexed documents."])
+
     def test_greeting_needs_no_document_citation(self):
         rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
         rag.rag_chain = SimpleNamespace(invoke=lambda _: self.fail("Greeting should not call retrieval"))

@@ -140,7 +140,15 @@ class ConversationalRAGSystem:
                 "source_documents": [],
                 "chat_history_length": len(history) + 2,
             }
-        response = self.rag_chain.invoke({"input": question, "chat_history": history})
+        rag_question = question
+        if (
+            len(question.split()) <= 8
+            and re.search(r"\bbns\b", question, re.IGNORECASE)
+            and re.search(r"\bbnss\b", question, re.IGNORECASE)
+            and not re.search(r"\b(?:what|how|why|when|where|which|explain|describe|define)\b|\?", question, re.IGNORECASE)
+        ):
+            rag_question = "Give a brief overview of BNS and BNSS based on the indexed documents."
+        response = self.rag_chain.invoke({"input": rag_question, "chat_history": history})
         answer = response["answer"]
         no_answer = re.search(
             r"\b(?:could not find|couldn't find|cannot find|can't find|do not know|don't know|no mention or definition|insufficient information)\b",
