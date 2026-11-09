@@ -142,6 +142,34 @@ class ConversationIsolationTests(unittest.TestCase):
 
 
 class HybridRetrievalTests(unittest.TestCase):
+    def test_contract_definition_under_named_act_beats_incidental_contract_use(self):
+        incidental = "A contingent contract is a contract to do something later. Contract contract contract."
+        definition = "(h) An agreement enforceable by law is a contract."
+        snapshot = {"documents": [incidental, definition], "metadatas": [
+            {"filename": "contract.pdf", "title": "The Indian Contract Act, 1872", "page": 20},
+            {"filename": "contract.pdf", "title": "The Indian Contract Act, 1872", "page": 11},
+        ]}
+        store = SimpleNamespace(
+            _collection=SimpleNamespace(get=lambda **_: snapshot),
+            similarity_search_with_relevance_scores=lambda *_, **__: [],
+        )
+        result = retrieve_documents(store, "What is a contract under the Indian Contract Act, 1872?")
+        self.assertEqual(result[0].metadata["page"], 11)
+
+    def test_company_definition_under_named_act_beats_unrelated_act(self):
+        unrelated = '“company” means a corporation for this procedure.'
+        definition = '“company” means a company incorporated under this Act or under any previous company law.'
+        snapshot = {"documents": [unrelated, definition], "metadatas": [
+            {"filename": "bnss.pdf", "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023", "page": 20},
+            {"filename": "companies.pdf", "title": "The Companies Act, 2013", "page": 3},
+        ]}
+        store = SimpleNamespace(
+            _collection=SimpleNamespace(get=lambda **_: snapshot),
+            similarity_search_with_relevance_scores=lambda *_, **__: [],
+        )
+        result = retrieve_documents(store, "What is a company under the Companies Act, 2013?")
+        self.assertEqual(result[0].metadata["filename"], "companies.pdf")
+
     def test_late_filing_topic_finds_late_fee_for_returns(self):
         forms = "GST filing penalty GST filing penalty"
         act = "A person who fails to furnish returns by the due date shall pay a late fee."

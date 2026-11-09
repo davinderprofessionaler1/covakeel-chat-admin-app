@@ -35,6 +35,8 @@ def _target(question):
     if not match:
         return ""
     target = re.sub(r"\s+(?:mean|stand\s+for)$", "", match.group(1), flags=re.IGNORECASE)
+    target = re.split(r"\s+under\s+", target, maxsplit=1, flags=re.IGNORECASE)[0]
+    target = re.sub(r"^(?:a|an|the)\s+", "", target, flags=re.IGNORECASE)
     return " ".join(_terms(target))
 
 
@@ -55,6 +57,8 @@ def retrieve_documents(vector_store, question, limit=10):
     reflected immediately, including replacements that do not change the count.
     """
     terms = list(dict.fromkeys(_terms(question)))
+    source_clause = re.search(r"\bunder\s+(?:the\s+)?(.+?)\s*\??$", question, re.IGNORECASE)
+    source_terms = set(_terms(source_clause.group(1))) if source_clause else set()
     search_terms = list(dict.fromkeys(terms + [alias for term in terms for alias in SEARCH_ALIASES.get(term, ())]))
     semantic = vector_store.similarity_search_with_relevance_scores(
         question, k=20, score_threshold=0.35
@@ -100,6 +104,23 @@ def retrieve_documents(vector_store, question, limit=10):
             continue
         if has_target:
             score += 10
+            # Prefer the Act's primary definition over incidental uses such as
+            # "contingent contract is a contract" or "One Person Company means".
+            if len(target.split()) == 1 and (not source_terms or source_terms <= title_terms) and (
+                re.search(rf"[\"“]{re.escape(target)}[\"”]\s+means\b", content, re.IGNORECASE)
+                or (target == "contract" and re.search(
+                    r"\ban\s+agreement\s+enforceable\s+by\s+law\s+is\s+a\s+contract\b",
+                    content, re.IGNORECASE,
+                ))
+            ):
+                score += 200
+            if len(target.split()) == 1 and re.search(
+                rf"(?:\b{re.escape(target)}\b[\"'”’]?\s+(?:means|is|refers\s+to|stands\s+for)\b|"
+                rf"\bis\s+(?:an?\s+)?{re.escape(target)}\b)",
+                content,
+                re.IGNORECASE,
+            ):
+                score += 60
             if re.search(
                 exact_target.pattern + r"\s*(?:[-—–:]|stands\s+for\b|means\b|is\b)",
                 content,
