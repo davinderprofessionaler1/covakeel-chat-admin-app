@@ -17,7 +17,7 @@ const titles = {
   health: ['System health', 'Current database and AI service status.'],
   settings: ['Settings', 'Your admin account and knowledge-base configuration.'],
 };
-const state = { section: 'overview', documents: [], search: '', poll: null, selectedFile: null };
+const state = { section: 'overview', documents: [], search: '', poll: null, selectedFile: null, pendingRemoval: null, removing: false };
 
 function notice(message, error = false) {
   const node = $('#notice');
@@ -71,7 +71,7 @@ function renderLegal(documents) {
   zone.ondragleave = () => zone.classList.remove('drag');
   zone.ondrop = (event) => { event.preventDefault(); zone.classList.remove('drag'); selectFile(event.dataTransfer.files?.[0]); };
   document.querySelectorAll('[data-remove]').forEach((button) => {
-    button.onclick = () => removeDocument(button.dataset.remove, documents.find((doc) => doc.id === button.dataset.remove)?.filename);
+    button.onclick = () => showRemoveDialog(documents.find((doc) => doc.id === button.dataset.remove));
   });
 }
 
@@ -139,10 +139,39 @@ async function upload(file) {
   finally { if (button?.isConnected) { button.disabled = false; button.textContent = 'Upload to knowledge base'; } }
 }
 
-async function removeDocument(id, filename) {
-  if (!confirm(`Remove “${filename}” from future chatbot answers?`)) return;
-  try { await api('/admin/documents/' + encodeURIComponent(id), { method: 'DELETE' }); await navigate('legal'); notice(`${filename} removed from the knowledge base.`); }
-  catch (error) { notice(error.message, true); }
+function showRemoveDialog(doc) {
+  if (!doc) return;
+  state.pendingRemoval = doc;
+  $('#remove-document-title').textContent = doc.title || doc.filename;
+  $('#remove-document-filename').textContent = doc.filename;
+  $('#remove-dialog-error').hidden = true;
+  $('#remove-dialog').showModal();
+  $('#remove-cancel').focus();
+}
+
+async function confirmRemoveDocument() {
+  const doc = state.pendingRemoval;
+  if (!doc || state.removing) return;
+  state.removing = true;
+  const confirmButton = $('#remove-confirm');
+  const cancelButton = $('#remove-cancel');
+  confirmButton.disabled = true;
+  cancelButton.disabled = true;
+  confirmButton.textContent = 'Removing…';
+  try {
+    await api('/admin/documents/' + encodeURIComponent(doc.id), { method: 'DELETE' });
+    $('#remove-dialog').close();
+    await navigate('legal');
+    notice(`${doc.filename} removed from the knowledge base.`);
+  } catch (error) {
+    $('#remove-dialog-error').textContent = error.message;
+    $('#remove-dialog-error').hidden = false;
+  } finally {
+    state.removing = false;
+    confirmButton.disabled = false;
+    cancelButton.disabled = false;
+    confirmButton.textContent = 'Remove document';
+  }
 }
 
 async function navigate(section) {
@@ -183,6 +212,10 @@ async function start() {
     window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
     $('#menu-toggle').onclick = () => $('.sidebar').classList.toggle('open');
     $('#sidebar-signout').onclick = signout;
+    $('#remove-cancel').onclick = () => $('#remove-dialog').close();
+    $('#remove-confirm').onclick = confirmRemoveDocument;
+    $('#remove-dialog').addEventListener('close', () => { state.pendingRemoval = null; });
+    $('#remove-dialog').addEventListener('cancel', (event) => { if (state.removing) event.preventDefault(); });
     navigate(location.hash.slice(1) || 'overview');
   } catch {
     localStorage.removeItem('cv-admin-token');

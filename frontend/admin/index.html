@@ -32,6 +32,14 @@
       <div class="content"><p class="eyebrow" id="section-eyebrow">ADMIN WORKSPACE</p><h1 id="section-title">Overview</h1><p class="intro" id="section-intro">A clear view of your legal knowledge workspace.</p><div id="notice" class="notice" role="status" hidden></div><div id="section-content" aria-live="polite"><div class="loading">Loading dashboard…</div></div></div>
     </main>
   </div>
+  <dialog id="remove-dialog" class="remove-dialog" aria-labelledby="remove-dialog-title" aria-describedby="remove-dialog-description">
+    <p class="eyebrow">KNOWLEDGE BASE</p>
+    <h2 id="remove-dialog-title">Remove document?</h2>
+    <p id="remove-dialog-description">Remove <strong id="remove-document-title"></strong> from the chatbot's knowledge base? It will no longer be used for new answers. Existing chats will stay as they are.</p>
+    <p class="secondary" id="remove-document-filename"></p>
+    <p class="remove-dialog-error" id="remove-dialog-error" role="alert" hidden></p>
+    <div class="remove-dialog-actions"><button class="btn ghost" id="remove-cancel" type="button">Cancel</button><button class="btn danger" id="remove-confirm" type="button">Remove document</button></div>
+  </dialog>
   <script type="module" src="/src/covakeel/admin.js"></script>
 </body>
 </html>
