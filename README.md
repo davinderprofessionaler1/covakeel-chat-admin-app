@@ -12,10 +12,10 @@ The local Python environment, CPU embedding dependencies, MongoDB binary, and pr
 `backend/.env` configuration are prepared in this workspace. Service data and model
 caches stay under `.local/`; the Chroma index stays under `backend/chroma_db/`.
 
-1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/apikey)
-   and put it in `backend/.env` as `GOOGLE_API_KEY=...`. Keep this file private.
-   `GOOGLE_MODEL` defaults to `gemini-3.5-flash-lite` and can be changed there.
-2. Build the starter index, without needing a Gemini key:
+1. Create a Claude API key in the [Claude Console](https://platform.claude.com/settings/keys)
+   and put it in `backend/.env` as `ANTHROPIC_API_KEY=...`. Keep this file private.
+   `CLAUDE_MODEL` defaults to `claude-sonnet-4-6` and can be changed there.
+2. Build the starter index, without needing a Claude key:
    ```bash
    backend/.venv/bin/python scripts/index_local.py
    ```
@@ -42,7 +42,7 @@ caches stay under `.local/`; the Chroma index stays under `backend/chroma_db/`.
    ```
    Open `http://<this-computer-LAN-IP>:8081` on the other computer. The Vite proxy
    forwards API requests; MongoDB and FastAPI keep listening on localhost.
-4. Register your own account in the frontend. Without the Gemini key, registration,
+4. Register your own account in the frontend. Without the Claude key, registration,
    login, and conversations work; chat returns a clear setup error. After changing
    the key, restart the backend. Check <http://127.0.0.1:8000/> for configuration status.
 
@@ -154,9 +154,7 @@ This project represents a sophisticated RAG implementation that goes beyond basi
 #### Retrieval Strategy
 - **Similarity search** with top-10 document retrieval (k=10)
 - Context window optimization for LLM processing
-- **Google Gemini 2.5-flash** as the LLM backbone:
-  - Temperature: 0.4 for balanced creativity and accuracy
-  - System message to human message conversion for compatibility
+- **Claude Sonnet 4.6** as the LLM for document-grounded answers.
 
 #### Conversation Buffer Memory
 - **Persistent conversation state** using LangChain's ConversationBufferMemory
@@ -250,7 +248,7 @@ This project represents a sophisticated RAG implementation that goes beyond basi
 - **LangChain**: RAG pipeline orchestration
 - **ChromaDB**: Vector database for semantic search
 - **Sentence-Transformers**: Embedding generation
-- **Google Gemini AI**: Large language model
+- **Claude**: Large language model
 - **MongoDB**: NoSQL database for user data & conversations
 - **Motor**: Async MongoDB driver
 - **PyMuPDF (fitz)**: PDF text extraction
@@ -280,7 +278,7 @@ This project represents a sophisticated RAG implementation that goes beyond basi
 - **Tesseract OCR** (for document processing)
 - **Poppler** (for PDF to image conversion)
 - **Node.js 18+** or **Bun** (for frontend)
-- **Google API Key** (for Gemini AI)
+- **Claude API key** (for chatbot answers)
 - **Docker & Docker Compose** (for containerized deployment)
 
 ### Install System Dependencies
@@ -432,7 +430,8 @@ cat > .env << EOF
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DB=india_law_ai_rag
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
-GOOGLE_API_KEY=your-google-gemini-api-key-here
+ANTHROPIC_API_KEY=your-claude-api-key-here
+CLAUDE_MODEL=claude-sonnet-4-6
 ENVIRONMENT=development
 EOF
 
@@ -497,8 +496,9 @@ MONGO_DB=india_law_ai_rag
 # JWT Configuration
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
 
-# Google AI Configuration
-GOOGLE_API_KEY=your-google-gemini-api-key-here
+# Claude API configuration
+ANTHROPIC_API_KEY=your-claude-api-key-here
+CLAUDE_MODEL=claude-sonnet-4-6
 
 # Application Configuration
 ENVIRONMENT=production
@@ -670,8 +670,8 @@ MONGODB_DB=india_law_ai_rag
 # JWT Secret (generate a secure random string)
 JWT_SECRET_KEY=<your-secret-key>
 
-# Google Gemini API Key (get from https://makersuite.google.com/app/apikey)
-GOOGLE_API_KEY=<your-api-key>
+# Claude API key (get from https://platform.claude.com/settings/keys)
+ANTHROPIC_API_KEY=<your-api-key>
 
 # Environment
 ENVIRONMENT=development
@@ -692,8 +692,7 @@ search_type="similarity"  # or "mmr" for diversity
 search_kwargs={"k": 10}   # Top-K documents
 
 # LLM settings
-model="gemini-2.5-flash"  # or "gemini-2.5-pro"
-temperature=0.4           # 0.0-1.0 (lower = more focused)
+CLAUDE_MODEL=claude-sonnet-4-6
 
 # Chunking settings (in vector_store_creator.py)
 chunk_size=2000          # Characters per chunk
@@ -807,7 +806,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - **India Code (indiacode.nic.in)** for providing access to Indian legislative acts
 - **LangChain** for the RAG framework
-- **Google** for the Gemini AI model
+- **Anthropic** for the Claude AI model
 - **ChromaDB** for efficient vector storage
 - **Tesseract** for OCR capabilities
 

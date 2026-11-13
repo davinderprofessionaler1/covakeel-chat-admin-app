@@ -2,7 +2,7 @@
 
 The `covakeel@gmail.com` account has the KVM 4 VPS at `201.18.201.90`.
 Its default domain is `srv2082168.hstgr.cloud`. This deployment runs the
-website and app, FastAPI/Gemini, MongoDB, and the Chroma index on that VPS.
+website and app, FastAPI/Claude, MongoDB, and the Chroma index on that VPS.
 Only Caddy publishes ports 80 and 443. Nginx serves both frontend pages and
 forwards `/api/` to FastAPI. MongoDB and FastAPI are private Docker services.
 
@@ -25,7 +25,7 @@ those persistent data paths with files from Git.
 `backend/chroma_db/local_manifest.json` lists the starter legal sources.
 
 Create `/opt/covakeel-rag/.env` from `.env.example` with strong random MongoDB
-and JWT secrets and the Gemini key. Keep it mode 600. Set `APP_DOMAIN` to
+and JWT secrets and the Claude API key (`ANTHROPIC_API_KEY`). Keep it mode 600. Set `APP_DOMAIN` to
 `srv2082168.hstgr.cloud` and `TLS_EMAIL` to `covakeel@gmail.com`.
 
 ```bash

@@ -6,7 +6,7 @@ forms, and light/dark tokens. It runs through Vite as a two-page application.
 
 - `index.html`: public website and inline/modal login/signup design.
 - `app/index.html`: authenticated app, chat, search, profile, and appearance.
-- `src/covakeel/api.js`: shared real FastAPI/JWT requests; no Gemini key is sent to the browser.
+- `src/covakeel/api.js`: shared real FastAPI/JWT requests; no Claude key is sent to the browser.
 - `src/covakeel/auth.js`: real email/password signup and email or username login.
 - `src/covakeel/app.js`: real conversations, unchanged AI response text, and actual retrieved sources.
 - `public/brand`: supplied SVG logos and favicon/app icons.

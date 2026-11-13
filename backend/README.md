@@ -1,6 +1,6 @@
 # Indian Law Acts RAG Chatbot API
 
-A FastAPI-based backend for a Retrieval-Augmented Generation (RAG) chatbot focused on Indian Law Acts. The API leverages vector search (ChromaDB), Google Gemini LLM, and LangChain to provide context-aware, conversational answers based on legal documents.
+A FastAPI-based backend for a Retrieval-Augmented Generation (RAG) chatbot focused on Indian Law Acts. The API leverages vector search (ChromaDB), Claude LLM, and LangChain to provide context-aware, conversational answers based on legal documents.
 
 ---
 
@@ -13,7 +13,7 @@ A FastAPI-based backend for a Retrieval-Augmented Generation (RAG) chatbot focus
 - **Chatbot**: Ask questions and receive contextually relevant answers using RAG.
 - **Streaming**: Stream chatbot responses for real-time interaction.
 - **Vector Search**: Uses ChromaDB for document retrieval.
-- **LLM Integration**: Google Gemini for answer generation.
+- **LLM Integration**: Claude for answer generation.
 
 ---
 
@@ -59,9 +59,10 @@ A FastAPI-based backend for a Retrieval-Augmented Generation (RAG) chatbot focus
 
 4. **Set up environment variables**
 
-   Create a `.env` file in the root directory and add your Google API key:
+   Create `backend/.env` and add your Claude API key:
    ```
-   GOOGLE_API_KEY=your-google-api-key
+   ANTHROPIC_API_KEY=your-claude-api-key
+   CLAUDE_MODEL=claude-sonnet-4-6
    ```
 
 ---
@@ -121,9 +122,15 @@ The API will be available at [http://localhost:8000](http://localhost:8000).
 ## RAG System
 
 - **Vector Store**: Uses ChromaDB (`chroma_db/` directory) for storing and retrieving document embeddings.
-- **LLM**: Google Gemini (via `langchain-google-genai`).
+- **LLM**: Claude (via `langchain-anthropic`).
 - **Embeddings**: Sentence Transformers (`all-MiniLM-L6-v2`).
 - **Retrieval**: Context-aware, history-augmented question answering.
+
+### Earlier versus later law
+
+The local admin dashboard's **Legal Knowledge Management → Reviewed law changes** form records a specific law keyword and provision, an earlier and later position, the effective date, the date through which the later position has been checked, and three official source links. An admin must review all three sources before publishing. Records are stored in MongoDB's `legal_changes` collection; uploaded PDFs alone do not create a verified amendment timeline.
+
+When a question names both the law keyword and provision, the chatbot shows the two dated positions with separate source cards. It labels the later position as current only if `verified_through` reaches today's date. A question asking for current law or a before/after comparison without a matching reviewed record receives an explicit unverified answer instead of an inferred current rule. Previously saved chats are unchanged. The review must be repeated when new amendments affect the same provision; remove and republish a record to update it.
 
 ---
 
@@ -136,4 +143,4 @@ The API will be available at [http://localhost:8000](http://localhost:8000).
 
 ## License
 
-[MIT](LICENSE) (or specify your license) 
+[MIT](LICENSE) (or specify your license)

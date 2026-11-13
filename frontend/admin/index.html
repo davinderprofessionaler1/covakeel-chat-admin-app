@@ -40,6 +40,13 @@
     <p class="remove-dialog-error" id="remove-dialog-error" role="alert" hidden></p>
     <div class="remove-dialog-actions"><button class="btn ghost" id="remove-cancel" type="button">Cancel</button><button class="btn danger" id="remove-confirm" type="button">Remove document</button></div>
   </dialog>
+  <dialog id="remove-change-dialog" class="remove-dialog" aria-labelledby="remove-change-title" aria-describedby="remove-change-description">
+    <p class="eyebrow">REVIEWED LAW CHANGES</p>
+    <h2 id="remove-change-title">Remove reviewed change?</h2>
+    <p id="remove-change-description">Remove <strong id="remove-change-name"></strong>? The chatbot will stop using this reviewed comparison for new answers. Existing chats will stay as they are.</p>
+    <p class="remove-dialog-error" id="remove-change-error" role="alert" hidden></p>
+    <div class="remove-dialog-actions"><button class="btn ghost" id="remove-change-cancel" type="button">Cancel</button><button class="btn danger" id="remove-change-confirm" type="button">Remove change</button></div>
+  </dialog>
   <script type="module" src="/src/covakeel/admin.js"></script>
 </body>
 </html>

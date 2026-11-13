@@ -11,20 +11,28 @@ from langchain_core.documents import Document
 from app.main import app
 from app.core.security import get_current_admin, get_current_user
 from app.services import rag_service
-from app.services.retrieval_service import ConversationalRAGSystem, GeminiChatModel
+from app.services.retrieval_service import ConversationalRAGSystem
 from app.services.hybrid_retrieval import retrieve_documents
 from app.services.auth_service import authenticate_user
 from app.schemas.auth import LoginRequest
 from app.utils.jwt import create_access_token, decode_access_token
 
 
-class GeminiRequestCompatibilityTests(unittest.TestCase):
-    def test_gemini_3_request_omits_unsupported_generation_parameters(self):
-        model = GeminiChatModel(model="gemini-3.5-flash-lite", google_api_key="test-key")
-        config = model._prepare_params(stop=None)
-        for field in ("candidate_count", "temperature", "top_p", "top_k"):
-            with self.subTest(field=field):
-                self.assertFalse(config._pb.HasField(field))
+class ClaudeConfigurationTests(unittest.TestCase):
+    def test_claude_key_is_required_even_when_google_key_exists(self):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "", "GOOGLE_API_KEY": "old-key"}):
+            self.assertFalse(rag_service.get_rag_status()["configured"])
+            self.assertIn("ANTHROPIC_API_KEY", rag_service.get_rag_status()["missing"][0])
+
+    def test_rag_initializes_claude_without_changing_retrieval(self):
+        with patch("app.services.retrieval_service.HuggingFaceEmbeddings"), patch(
+            "app.services.retrieval_service.Chroma"
+        ), patch("app.services.retrieval_service.ChatAnthropic") as chat, patch.object(
+            ConversationalRAGSystem, "_setup_retrieval_chain"
+        ), patch.dict("os.environ", {"CLAUDE_MODEL": "claude-sonnet-4-6"}):
+            ConversationalRAGSystem(anthropic_api_key="test-key")
+        self.assertEqual(chat.call_args.kwargs["model"], "claude-sonnet-4-6")
+        self.assertEqual(chat.call_args.kwargs["api_key"], "test-key")
 
 
 class AdminLoginIsolationTests(unittest.TestCase):
@@ -56,7 +64,23 @@ class AdminLoginIsolationTests(unittest.TestCase):
 
 
 class ConversationIsolationTests(unittest.TestCase):
-    def test_bns_bnss_topic_label_requests_an_overview(self):
+    def test_empty_collection_allows_first_upload_and_returns_no_answer(self):
+        collection = SimpleNamespace(count=lambda: 0)
+        fake = SimpleNamespace(vector_store=SimpleNamespace(_collection=collection), ask=lambda *_: self.fail("Empty index should not call Claude"))
+        previous = rag_service._rag_system
+        try:
+            rag_service._rag_system = None
+            with patch.object(rag_service, "ensure_rag_configured"), patch(
+                "app.services.retrieval_service.ConversationalRAGSystem", return_value=fake
+            ):
+                self.assertIs(rag_service.get_rag_system(), fake)
+                response = rag_service.ask_sync("What is GST?")
+            self.assertEqual(response["source_documents"], [])
+            self.assertIn("could not find", response["answer"])
+        finally:
+            rag_service._rag_system = previous
+
+    def test_bns_bnss_topic_label_requests_a_detailed_overview(self):
         rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
         seen = []
         def invoke(payload):
@@ -65,7 +89,7 @@ class ConversationIsolationTests(unittest.TestCase):
         rag.rag_chain = SimpleNamespace(invoke=invoke)
         result = rag.ask("Criminal Law (BNS & BNSS Test)")
         self.assertEqual(result["question"], "Criminal Law (BNS & BNSS Test)")
-        self.assertEqual(seen, ["Give a brief overview of BNS and BNSS based on the indexed documents."])
+        self.assertEqual(seen, ["Give a detailed, source-cited overview of BNS and BNSS based on the indexed documents."])
 
     def test_greeting_needs_no_document_citation(self):
         rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
@@ -73,6 +97,16 @@ class ConversationIsolationTests(unittest.TestCase):
         response = rag.ask("hi", [])
         self.assertIn("Hello", response["answer"])
         self.assertEqual(response["source_documents"], [])
+
+    def test_unqualified_income_tax_slabs_question_requests_year_and_taxpayer(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        rag.rag_chain = SimpleNamespace(invoke=lambda _: self.fail("Ambiguous rates should not reach the model"))
+        for question in ("Income Tax Slabs & Rates?", "ncome Tax Slabs & Rates?"):
+            response = rag.ask(question)
+            self.assertIn("financial year", response["answer"])
+            self.assertIn("individual", response["answer"])
+            self.assertIn("old regime", response["answer"])
+            self.assertEqual(response["source_documents"], [])
 
     def test_requests_use_only_their_supplied_history(self):
         rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
@@ -87,12 +121,48 @@ class ConversationIsolationTests(unittest.TestCase):
         self.assertEqual(seen, [["private question", "private reply"], []])
         self.assertEqual(len(first_history), 2)
 
+    def test_standalone_question_skips_history_rewrite(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        seen = []
+        rag.rag_chain = SimpleNamespace(invoke=lambda payload: seen.append(payload) or {
+            "answer": "I could not find the answer in the indexed documents.", "context": [],
+        })
+        rag.ask("What is GST under the CGST Act?", [("user", "What is ITR?"), ("assistant", "Income Tax Return")])
+        self.assertEqual(seen[0]["chat_history"], [])
+
+    def test_follow_up_keeps_only_recent_context(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        seen = []
+        rag.rag_chain = SimpleNamespace(invoke=lambda payload: seen.append(payload) or {
+            "answer": "I could not find the answer in the indexed documents.", "context": [],
+        })
+        history = [("user", f"question {n}") if n % 2 == 0 else ("assistant", f"answer {n}") for n in range(10)]
+        rag.ask("How does it apply?", history)
+        self.assertEqual([message.content for message in seen[0]["chat_history"]],
+                         [text for _, text in history[-6:]])
+
+    def test_tax_year_reply_uses_question_it_is_clarifying(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        seen = []
+        rag.rag_chain = SimpleNamespace(invoke=lambda payload: seen.append(payload) or {
+            "answer": "I could not find the answer in the indexed documents.", "context": [],
+        })
+        history = [("user", "Income Tax Slabs & Rates?"), ("assistant", "Which tax year?")]
+        rag.ask("AY 2026-27, individual, new regime", history)
+        self.assertEqual([message.content for message in seen[0]["chat_history"]],
+                         [text for _, text in history])
+
     def test_async_wrapper_passes_conversation_history(self):
         received = []
-        fake = SimpleNamespace(ask=lambda question, history: received.append((question, history)) or {"answer": "ok"})
+        fake = SimpleNamespace(
+            vector_store=SimpleNamespace(_collection=SimpleNamespace(count=lambda: 1)),
+            ask=lambda question, history: received.append((question, history)) or {"answer": "ok"},
+        )
         history = [("user", "earlier question")]
         try:
-            with patch.object(rag_service, "get_rag_system", return_value=fake):
+            with patch.object(rag_service, "get_rag_system", return_value=fake), patch(
+                "app.services.legal_change_service.find_change", new=AsyncMock(return_value=None)
+            ):
                 response = asyncio.run(rag_service.ask_async("follow up", history))
             self.assertEqual(response["answer"], "ok")
             self.assertEqual(received, [("follow up", history)])
@@ -118,6 +188,27 @@ class ConversationIsolationTests(unittest.TestCase):
         result = rag.ask("what is ITR?")
         self.assertEqual(result["source_documents"], [relevant])
         self.assertEqual(result["answer"], "ITR stands for Income Tax Return [1].")
+
+    def test_partially_sourced_answer_keeps_its_source_with_a_verification_gap(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        historical = Document(page_content="Historical tax rate provision", metadata={"citation_id": "1", "filename": "old.pdf"})
+        rag.rag_chain = SimpleNamespace(invoke=lambda _: {
+            "answer": "The older rate was set out in the Act [1]. I could not find a later amendment in the indexed documents.",
+            "context": [historical],
+        })
+        result = rag.ask("What rate applied and has it changed?")
+        self.assertEqual(result["source_documents"], [historical])
+
+    def test_answer_with_unknown_source_number_is_rejected(self):
+        rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
+        relevant = Document(page_content="A supported provision", metadata={"citation_id": "1"})
+        rag.rag_chain = SimpleNamespace(invoke=lambda _: {
+            "answer": "Supported [1]. Unverified extra claim [2].",
+            "context": [relevant],
+        })
+        result = rag.ask("Explain the provision")
+        self.assertEqual(result["answer"], "I could not find the answer in the indexed documents.")
+        self.assertEqual(result["source_documents"], [])
 
     def test_comma_separated_citations_keep_both_passages(self):
         rag = ConversationalRAGSystem.__new__(ConversationalRAGSystem)
@@ -153,6 +244,21 @@ class ConversationIsolationTests(unittest.TestCase):
 
 
 class HybridRetrievalTests(unittest.TestCase):
+    def test_numbered_notification_prefers_exact_rate_category(self):
+        snapshot = {"documents": [
+            "Notification No. 30/2017-Central Tax (Rate) changes the rate of a service.",
+            "Notification No. 30/2017-Central Tax extends return filing dates.",
+        ], "metadatas": [
+            {"filename": "rate.pdf", "title": "CGST Rate Notification 30/2017-Central Tax (Rate) — 29 Sep 2017", "page": 1},
+            {"filename": "tax.pdf", "title": "CGST Notification 30/2017-Central Tax — 11 Sep 2017", "page": 1},
+        ]}
+        store = SimpleNamespace(
+            _collection=SimpleNamespace(get=lambda **_: snapshot),
+            similarity_search_with_relevance_scores=lambda *_, **__: [],
+        )
+        self.assertEqual(retrieve_documents(store, "What did Notification 30/2017-Central Tax do?")[0].metadata["filename"], "tax.pdf")
+        self.assertEqual(retrieve_documents(store, "What did Rate Notification 30/2017-Central Tax (Rate) do?")[0].metadata["filename"], "rate.pdf")
+
     def test_named_finance_act_section_surfaces_amendment_in_punjabi_question(self):
         unrelated = "Section 16(4) concerns tax invoices and debit notes."
         amendment = '120. In section 16 of the Central Goods and Services Tax Act, in sub-section (4), the words “invoice relating to such” shall be omitted.'
@@ -246,6 +352,32 @@ class HybridRetrievalTests(unittest.TestCase):
         )
         result = retrieve_documents(store, "what is gst?")
         self.assertEqual(result[0].metadata["filename"], "gst-flyer.pdf")
+
+    def test_outside_gst_question_uses_scope_provisions_not_incidental_circulars(self):
+        circular = "GST applies outside a special zone, but this circular concerns registration."
+        scope = "7. (1) Scope of supply. (2) Activities specified in Schedule III shall be treated neither as a supply of goods nor services."
+        levy = "9. (1) Central tax on all intra-State supplies except alcoholic liquor for human consumption. (2) Petroleum crude and diesel are levied from a notified date."
+        schedule = "SCHEDULE  III\n[See section 7]\nServices by an employee to the employer."
+        constitution = '(12A) “goods and services tax” means any tax on supply except alcoholic liquor for human consumption.'
+        amendment = '4. In the principal Act, in Schedule III, paragraph 6 substitutes “specified actionable claims”.'
+        commencement = 'The 1st day of October, 2023 is appointed as the date on which the Act comes into force.'
+        contents = [circular, scope, levy, schedule, constitution, amendment, commencement]
+        metadatas = [
+            {"title": "CGST Circular 1/2024", "page": 1},
+            {"title": "THE CENTRAL GOODS AND SERVICES TAX ACT, 2017", "page": 13},
+            {"title": "THE CENTRAL GOODS AND SERVICES TAX ACT, 2017", "page": 13},
+            {"title": "THE CENTRAL GOODS AND SERVICES TAX ACT, 2017", "page": 103},
+            {"title": "CONSTITUTION OF INDIA", "page": 255},
+            {"title": "THE CENTRAL GOODS AND SERVICES TAX (AMENDMENT) ACT, 2023", "page": 2},
+            {"title": "CGST Notification 48/2023-Central Tax — 29 Sep 2023", "page": 1},
+        ]
+        store = SimpleNamespace(
+            _collection=SimpleNamespace(get=lambda **_: {"documents": contents, "metadatas": metadatas}),
+            similarity_search_with_relevance_scores=lambda *_, **__: [(Document(page_content=circular, metadata=metadatas[0]), 0.9)],
+        )
+        result = retrieve_documents(store, "What is kept outside GST?")
+        self.assertEqual({doc.metadata["page"] for doc in result}, {1, 2, 13, 103, 255})
+        self.assertTrue(all("Circular" not in doc.metadata["title"] for doc in result))
 
     def test_exact_acronym_definition_outranks_unrelated_semantic_matches(self):
         itr = "ITR — Income Tax Return. ITR stands for Income Tax Return."

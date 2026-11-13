@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/rebuild a local Chroma corpus from PDFs, without Gemini calls.
+"""Build/rebuild a local Chroma corpus from PDFs, without Claude calls.
 
 Usage: backend/.venv/bin/python scripts/index_local.py [--pdf-dir PATH]
 Without --pdf-dir, downloads the official RTI and CGST Act PDFs for a starter corpus.

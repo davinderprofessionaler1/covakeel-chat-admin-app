@@ -28,6 +28,19 @@ async def list_messages_by_conversation(conv_id: str) -> List[Message]:
     cursor = db["messages"].find({"conversationId": ObjectId(conv_id)}).sort("createdAt", 1)
     return [Message(**doc) async for doc in cursor]
 
+async def get_question_for_answer(message: Message) -> Optional[str]:
+    """Find the user turn immediately before this saved assistant response."""
+    db = get_db()
+    data = await db["messages"].find_one(
+        {
+            "conversationId": message.conversationId,
+            "sender": "user",
+            "createdAt": {"$lte": message.createdAt},
+        },
+        sort=[("createdAt", -1), ("_id", -1)],
+    )
+    return data.get("text") if data else None
+
 async def delete_message(msg_id: str):
     db = get_db()
-    await db["messages"].delete_one({"_id": ObjectId(msg_id)}) 
+    await db["messages"].delete_one({"_id": ObjectId(msg_id)})

@@ -3,7 +3,7 @@ export const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000
 export class ApiError extends Error {
   constructor(message, status) { super(message); this.name = 'ApiError'; this.status = status; }
 }
-export async function api(path, { method = 'GET', body, auth = true, signal } = {}) {
+export async function api(path, { method = 'GET', body, auth = true, signal, responseType = 'json' } = {}) {
   const token = localStorage.getItem('token');
   const headers = {};
   if (auth && token) headers.Authorization = `Bearer ${token}`;
@@ -17,7 +17,7 @@ export async function api(path, { method = 'GET', body, auth = true, signal } = 
     if (response.status === 401 && auth) { localStorage.removeItem('token'); localStorage.removeItem('cv-user'); }
     throw new ApiError(detail || `Request failed (${response.status})`, response.status);
   }
-  return response.status === 204 ? null : response.json();
+  return response.status === 204 ? null : responseType === 'blob' ? response.blob() : response.json();
 }
 export async function login(identifier, password) {
   const result = await api('/auth/login', { method: 'POST', auth: false, body: { username: identifier.trim(), password } });

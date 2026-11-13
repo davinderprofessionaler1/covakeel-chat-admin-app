@@ -4,8 +4,6 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-from app.core.config import CHROMA_DB_PATH
-
 _rag_system = None
 _executor = None
 _init_lock = threading.Lock()
@@ -13,10 +11,8 @@ _init_lock = threading.Lock()
 
 def get_rag_status():
     missing = []
-    if not os.getenv("GOOGLE_API_KEY", "").strip():
-        missing.append("Set GOOGLE_API_KEY in backend/.env and restart the backend")
-    if not (CHROMA_DB_PATH / "chroma.sqlite3").is_file():
-        missing.append("Build the Chroma index with scripts/index_local.py")
+    if not os.getenv("ANTHROPIC_API_KEY", "").strip():
+        missing.append("Set ANTHROPIC_API_KEY in backend/.env and restart the backend")
     return {"configured": not missing, "initialized": _rag_system is not None, "missing": missing}
 
 
@@ -32,10 +28,8 @@ def get_rag_system():
     with _init_lock:
         if _rag_system is None:
             from app.services.retrieval_service import ConversationalRAGSystem
-            candidate = ConversationalRAGSystem(chroma_db_path=str(CHROMA_DB_PATH))
-            if candidate.vector_store._collection.count() == 0:
-                raise RuntimeError("The Chroma collection is empty. Run scripts/index_local.py")
-            _rag_system = candidate
+            from app.core.config import CHROMA_DB_PATH
+            _rag_system = ConversationalRAGSystem(chroma_db_path=str(CHROMA_DB_PATH))
     return _rag_system
 
 
@@ -48,10 +42,19 @@ def get_executor():
 
 
 def ask_sync(question: str, chat_history=None):
-    return get_rag_system().ask(question, chat_history)
+    system = get_rag_system()
+    if system.vector_store._collection.count() == 0:
+        return {"question": question, "answer": "I could not find the answer in the indexed documents.", "source_documents": []}
+    return system.ask(question, chat_history)
 
 
 async def ask_async(question: str, chat_history=None):
+    from app.services import legal_change_service
+    change = await legal_change_service.find_change(question)
+    if change:
+        return legal_change_service.comparison_answer(change, question)
+    if legal_change_service.CURRENT_OR_COMPARISON.search(question):
+        return legal_change_service.unverified_answer(question)
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(get_executor(), ask_sync, question, chat_history)
 

@@ -124,6 +124,13 @@ def _index_pdf(path: Path, doc_id: str, filename: str, sha256: str, title: str, 
     chunks = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=500).split_documents(pages)
     if len(chunks) > 2000:
         raise ValueError("PDF creates too many chunks; split it into smaller documents")
+    if title.endswith(" [OCR]"):
+        for chunk in chunks:
+            chunk.page_content = (
+                "[OCR transcription; verify exact legal wording and figures in the linked official PDF.]\n"
+                + chunk.page_content
+            )
+            chunk.metadata["text_quality"] = "OCR"
     ids = [f"{doc_id}:{i}" for i in range(len(chunks))]
     with _index_lock:
         store = rag_service.get_rag_system().vector_store

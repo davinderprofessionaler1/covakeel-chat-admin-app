@@ -3,18 +3,75 @@
 import os
 import re
 import shutil
+from datetime import date, datetime
 from urllib.parse import urlparse
 
 from bson import ObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field
 
 from app.core.config import ADMIN_UPLOAD_DIR, CHROMA_DB_PATH
 from app.core.security import get_current_admin
 from app.db.mongodb import get_db
-from app.services import admin_service, rag_service
+from app.services import admin_service, legal_change_service, pdf_url_import, rag_service
 
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
+
+
+class PdfUrlImport(BaseModel):
+    url: str = Field(min_length=1, max_length=500)
+    title: str | None = Field(default=None, max_length=180)
+
+
+class LegalChangeInput(BaseModel):
+    law_keyword: str = Field(min_length=2, max_length=100)
+    provision: str = Field(min_length=2, max_length=100)
+    before_text: str = Field(min_length=10, max_length=2000)
+    after_text: str = Field(min_length=10, max_length=2000)
+    before_from: date
+    effective_from: date
+    verified_through: date
+    before_source_url: str = Field(min_length=12, max_length=500)
+    after_source_url: str = Field(min_length=12, max_length=500)
+    commencement_source_url: str = Field(min_length=12, max_length=500)
+
+
+@router.get("/legal-changes")
+async def legal_changes():
+    return await legal_change_service.list_changes()
+
+
+@router.post("/legal-changes", status_code=status.HTTP_201_CREATED)
+async def create_legal_change(payload: LegalChangeInput, admin=Depends(get_current_admin)):
+    if not (payload.before_from < payload.effective_from <= payload.verified_through <= legal_change_service.india_today()):
+        raise HTTPException(status_code=400, detail="Dates must satisfy: before starts < effective date <= verified through <= today")
+    values = payload.model_dump()
+    for key in ("before_source_url", "after_source_url", "commencement_source_url"):
+        values[key] = values[key].strip()
+        if not legal_change_service.official_url(values[key]):
+            raise HTTPException(status_code=400, detail=f"{key} must be an official HTTPS .gov.in or .nic.in link")
+    for key in ("law_keyword", "provision", "before_text", "after_text"):
+        values[key] = values[key].strip()
+        if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", values[key]):
+            raise HTTPException(status_code=400, detail=f"{key} contains control characters")
+    if not values["law_keyword"] or not values["provision"]:
+        raise HTTPException(status_code=400, detail="Law keyword and provision are required")
+    values["key"] = legal_change_service.change_key(values["law_keyword"], values["provision"])
+    if await get_db().legal_changes.find_one({"key": values["key"]}):
+        raise HTTPException(status_code=409, detail="A reviewed change for this law and provision already exists. Remove it before replacing it.")
+    for key in ("before_from", "effective_from", "verified_through"):
+        values[key] = values[key].isoformat()
+    values.update({"_id": str(ObjectId()), "verified_by": admin.email, "created_at": datetime.utcnow()})
+    await get_db().legal_changes.insert_one(values)
+    return legal_change_service.public_change(values)
+
+
+@router.delete("/legal-changes/{change_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_legal_change(change_id: str):
+    result = await get_db().legal_changes.delete_one({"_id": change_id})
+    if not result.deleted_count:
+        raise HTTPException(status_code=404, detail="Reviewed legal change not found")
 
 
 @router.get("/overview")
@@ -74,6 +131,21 @@ async def upload_document(
         doc = await admin_service.queue_upload(filename, bytes(data), title, source_url)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    background_tasks.add_task(admin_service.process_upload, doc["id"])
+    return doc
+
+
+@router.post("/documents/from-url", status_code=status.HTTP_202_ACCEPTED)
+async def import_document_from_url(payload: PdfUrlImport, background_tasks: BackgroundTasks):
+    try:
+        url, fallback_filename = pdf_url_import.parse_pdf_url(payload.url)
+        title = (payload.title or fallback_filename[:-4].replace("_", " ")).strip()
+        if not title or re.search(r"[\x00-\x1f\x7f]", title):
+            raise ValueError("Use a plain document title")
+        filename, data = await pdf_url_import.download_pdf(url)
+        doc = await admin_service.queue_upload(filename, data, title, url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     background_tasks.add_task(admin_service.process_upload, doc["id"])
     return doc
 
@@ -142,7 +214,7 @@ async def health():
 async def settings(admin=Depends(get_current_admin)):
     return {
         "adminEmail": admin.email,
-        "model": os.getenv("GOOGLE_MODEL", "gemini-3.5-flash-lite"),
+        "model": os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6"),
         "maxPdfMb": admin_service.MAX_PDF_BYTES // (1024 * 1024),
         "uploadDirectory": str(ADMIN_UPLOAD_DIR),
         "collection": "indian_law_acts",

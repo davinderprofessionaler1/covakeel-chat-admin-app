@@ -21,8 +21,8 @@ services:
       MONGODB_URI: mongodb://${MONGO_USERNAME:?Set MONGO_USERNAME in .env}:${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}@mongodb:27017/${MONGO_DB:-covakeel}?authSource=admin
       MONGODB_DB: ${MONGO_DB:-covakeel}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?Set GOOGLE_API_KEY in .env}
-      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-3.5-flash-lite}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in .env}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-6}
       ENABLE_ADMIN: "true"
       CHROMA_DB_PATH: /app/chroma_db
       ADMIN_UPLOAD_DIR: /admin_uploads

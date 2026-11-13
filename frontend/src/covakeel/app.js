@@ -78,7 +78,6 @@ import './integration.css';
   const mark = k => $$('.sd-c').forEach(x => x.classList.toggle('on', x.dataset.open === k));
   const title = t => { $('#c-title').textContent = t; $('#m-title').textContent = t; B.classList.toggle('in-chat', !!t); };
   const short = t => t.length > 48 ? t.slice(0, 46) + '…' : t;
-  const noAnswer = text => /^(?:hello[!,\.\s]*)?(?:i\s+(?:could\s+not|couldn't|cannot|can't|do\s+not|don't)\s+(?:find|know)|based\s+on\s+the\s+provided\s+context[^.]*no\s+mention)/i.test(text.trim());
   function fresh() { currentChatId = null; viewRevision++; go('ask'); V.classList.add('fresh'); thread.innerHTML = ''; mark(null); title(''); q.value = ''; grow(); ph(); setHash('#new'); }
   function chatMode() { V.classList.remove('fresh'); ph(); }
   async function openChat(k) {
@@ -101,22 +100,80 @@ import './integration.css';
       loading.textContent = error.message; loading.classList.add('cv-error');
     }
   }
+  function appendAnswerInline(parent, value) {
+    const pieces = value.split(/(\*\*[^*]+\*\*|`[^`]+`|\[\d+(?:,\s*\d+)*\]|\*[^*\n]+\*)/g);
+    for (const piece of pieces) {
+      if (/^\[\d+(?:,\s*\d+)*\]$/.test(piece)) {
+        for (const number of piece.slice(1, -1).split(',').map(x => x.trim())) {
+          const citation = document.createElement('button'); citation.type = 'button'; citation.className = 'cite';
+          citation.dataset.citation = number; citation.textContent = '[' + number + ']';
+          citation.setAttribute('aria-label', 'Open cited source ' + number); parent.append(citation);
+        }
+      } else if ((piece.startsWith('**') && piece.endsWith('**')) || (piece.startsWith('`') && piece.endsWith('`')) || (piece.startsWith('*') && piece.endsWith('*'))) {
+        const tag = piece.startsWith('**') ? 'strong' : piece.startsWith('`') ? 'code' : 'em';
+        const inline = document.createElement(tag); inline.textContent = piece.slice(tag === 'strong' ? 2 : 1, tag === 'strong' ? -2 : -1); parent.append(inline);
+      } else parent.append(document.createTextNode(piece));
+    }
+  }
+  function renderAnswer(answer, text) {
+    const lines = text.split(/\r?\n/);
+    const isHeading = line => /^#{1,4}\s+/.test(line);
+    const isRule = line => /^\s*(?:---+|___+)\s*$/.test(line);
+    const isBullet = line => /^\s*[-*•]\s+/.test(line);
+    const isNumbered = line => /^\s*\d+[.)]\s+/.test(line);
+    const isTable = line => /^\s*\|.*\|\s*$/.test(line);
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      if (!line) { i++; continue; }
+      if (isHeading(line)) {
+        const level = Math.min(4, line.match(/^#+/)[0].length + 1);
+        const heading = document.createElement('h' + level); appendAnswerInline(heading, line.replace(/^#{1,4}\s+/, '')); answer.append(heading); i++; continue;
+      }
+      if (isRule(line)) { answer.append(document.createElement('hr')); i++; continue; }
+      if (isBullet(line) || isNumbered(line)) {
+        const numbered = isNumbered(line), list = document.createElement(numbered ? 'ol' : 'ul');
+        while (i < lines.length && (numbered ? isNumbered(lines[i]) : isBullet(lines[i]))) {
+          const item = document.createElement('li'); appendAnswerInline(item, lines[i].trim().replace(numbered ? /^\d+[.)]\s+/ : /^[-*•]\s+/, ''));
+          list.append(item); i++;
+        }
+        answer.append(list); continue;
+      }
+      if (isTable(line)) {
+        const wrap = document.createElement('div'); wrap.className = 'cv-answer-table';
+        const table = document.createElement('table'); let rowIndex = 0;
+        while (i < lines.length && isTable(lines[i])) {
+          const cells = lines[i].trim().slice(1, -1).split('|').map(cell => cell.trim()); i++;
+          if (cells.every(cell => /^:?-{3,}:?$/.test(cell))) continue;
+          const row = document.createElement('tr');
+          for (const cell of cells) { const col = document.createElement(rowIndex ? 'td' : 'th'); appendAnswerInline(col, cell); row.append(col); }
+          table.append(row); rowIndex++;
+        }
+        wrap.append(table); answer.append(wrap); continue;
+      }
+      if (line.startsWith('>')) {
+        const quote = document.createElement('blockquote'); const content = [];
+        while (i < lines.length && lines[i].trim().startsWith('>')) { content.push(lines[i].trim().replace(/^>\s?/, '')); i++; }
+        appendAnswerInline(quote, content.join(' ')); answer.append(quote); continue;
+      }
+      const paragraph = document.createElement('p'), content = [];
+      while (i < lines.length && lines[i].trim() && !isHeading(lines[i].trim()) && !isRule(lines[i]) && !isBullet(lines[i]) && !isNumbered(lines[i]) && !isTable(lines[i]) && !lines[i].trim().startsWith('>')) {
+        content.push(lines[i].trim()); i++;
+      }
+      appendAnswerInline(paragraph, content.join(' ')); answer.append(paragraph);
+    }
+  }
   function renderMessage(message) {
     const node = document.createElement('div'); node.className = 'msg ' + (message.sender === 'user' ? 'user' : 'ai');
     node.dataset.messageId = message.id;
     if (message.sender === 'assistant') node.innerHTML = AIHEAD.replace('{s}', '');
     const answer = document.createElement('div'); answer.className = message.sender === 'assistant' ? 'ans ans-live' : '';
-    const pieces = message.text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
-    for (const piece of pieces) {
-      if ((piece.startsWith('**') && piece.endsWith('**')) || (piece.startsWith('`') && piece.endsWith('`'))) {
-        const inline = document.createElement(piece.startsWith('**') ? 'strong' : 'code');
-        inline.textContent = piece.startsWith('**') ? piece.slice(2, -2) : piece.slice(1, -1); answer.append(inline);
-      } else answer.append(document.createTextNode(piece));
-    }
+    if (message.sender === 'assistant') renderAnswer(answer, message.text);
+    else answer.textContent = message.text;
     node.append(answer);
     if (message.sender === 'assistant') {
       const actions = document.createElement('div'); actions.className = 'act';
-      actions.innerHTML = `<button class="ib" data-copy aria-label="Copy answer" title="Copy answer">${IC.chat}</button><button class="ib" data-save aria-label="Save answer" title="Save answer" aria-pressed="false">${IC.folder}</button><button class="ib" data-fb="yes" aria-label="Helpful" title="Helpful" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 10v11H3V10h4zm0 0 5-8 2 1v6h5l2 2-2 9H7"/></svg></button><button class="ib" data-fb="no" aria-label="Not helpful" title="Not helpful" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 14V3H3v11h4zm0 0 5 8 2-1v-6h5l2-2-2-9H7"/></svg></button>`;
+      actions.innerHTML = `<button class="ib" data-copy aria-label="Copy answer" title="Copy answer">${IC.chat}</button><button class="ib cv-export" data-export="docx" aria-label="Download answer as Word document" title="Download Word document">DOC</button><button class="ib cv-export" data-export="pdf" aria-label="Download answer as PDF" title="Download PDF">PDF</button><button class="ib" data-save aria-label="Save answer" title="Save answer" aria-pressed="false">${IC.folder}</button><button class="ib" data-fb="yes" aria-label="Helpful" title="Helpful" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 10v11H3V10h4zm0 0 5-8 2 1v6h5l2 2-2 9H7"/></svg></button><button class="ib" data-fb="no" aria-label="Not helpful" title="Not helpful" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 14V3H3v11h4zm0 0 5 8 2-1v-6h5l2-2-2-9H7"/></svg></button>`;
       const saved = JSON.parse(localStorage.getItem('cv-saved:' + account.id) || '{}');
       actions.querySelector('[data-save]').setAttribute('aria-pressed', String(!!saved[message.id]));
       node.append(actions);
@@ -124,7 +181,6 @@ import './integration.css';
     return node;
   }
   async function loadSources(id, node) {
-    if (noAnswer(node.querySelector('.ans')?.textContent || '')) return;
     try {
       const sources = await api('/messages/' + encodeURIComponent(id) + '/sources');
       if (!sources.length || !node.isConnected) return;
@@ -136,22 +192,46 @@ import './integration.css';
         grouped.get(key).push(source);
       }
       node.querySelector('.ai-s').textContent = grouped.size + (grouped.size === 1 ? ' source' : ' sources');
+      const heading = document.createElement('div'); heading.className = 'cv-citations-head';
+      heading.textContent = 'Citations · ' + grouped.size + (grouped.size === 1 ? ' document' : ' documents');
+      node.insertBefore(heading, node.querySelector('.act'));
       let index = 0;
       for (const [, passages] of grouped) {
         index++;
         const card = document.createElement('div'); card.className = 'src';
         const filename = passages[0].filename || passages[0].metadata?.filename || 'Library document';
         const citation = passages[0].metadata?.citation_id || index;
+        card.dataset.citation = citation;
         const pages = [...new Set(passages.map(p => p.metadata?.page).filter(Boolean))].sort((a,b) => a-b);
         const label = passages.length + (passages.length === 1 ? ' passage' : ' passages') + (pages.length ? ' · Pages ' + pages.join(', ') : '');
         const title = passages[0]?.metadata?.title || filename.replace(/_/g, ' ').replace(/\.pdf$/i, '');
-        card.innerHTML = `<button class="src-h" type="button" aria-expanded="false"><span class="num">${esc(citation)}</span><span class="src-t"><b>${esc(title)}</b><span>${esc(label)}</span></span><span class="src-c"><span class="m-o">Read source</span><span class="m-c">Close</span></span>${IC.chev}</button><div class="law" hidden></div>`;
+        const reviewed = passages[0]?.metadata?.source_type === 'reviewed legal change';
+        card.innerHTML = `<button class="src-h" type="button" aria-expanded="false"><span class="num">${esc(citation)}</span><span class="src-t"><b>${esc(title)}</b><span>${esc(reviewed ? 'Source-reviewed summary · ' + label : label)}</span></span><span class="src-c"><span class="m-o">${reviewed ? 'Review summary' : 'Read source'}</span><span class="m-c">Close</span></span>${IC.chev}</button><div class="law" hidden></div>`;
         const law = card.querySelector('.law'); law.tabIndex = 0; law.setAttribute('aria-label', 'Retrieved library passages');
         for (const passage of passages) {
           const section = document.createElement('div'); section.className = 'cv-passage';
           if (passage.metadata?.page) { const heading = document.createElement('b'); heading.textContent = 'Page ' + passage.metadata.page; section.append(heading); }
           const text = document.createElement('p'); text.textContent = passage.content; text.style.whiteSpace = 'pre-wrap'; section.append(text); law.append(section);
         }
+        const source = passages[0];
+        const officialUrl = source?.metadata?.source_url;
+        const actions = document.createElement('div'); actions.className = 'cv-source-actions';
+        if (/^https:\/\//i.test(officialUrl || '')) {
+          const link = document.createElement('a');
+          link.href = officialUrl; link.target = '_blank'; link.rel = 'noopener noreferrer';
+          link.className = 'cv-source-open'; link.textContent = 'Official website ↗';
+          actions.append(link);
+        }
+        if (source?.metadata?.document_id) {
+          const openPdf = document.createElement('button'); openPdf.type = 'button';
+          openPdf.className = 'cv-pdf-open'; openPdf.dataset.sourceId = source.id;
+          openPdf.textContent = 'Open source PDF ↗'; actions.prepend(openPdf);
+          const downloadPdf = document.createElement('button'); downloadPdf.type = 'button';
+          downloadPdf.className = 'cv-pdf-download'; downloadPdf.dataset.sourceId = source.id;
+          downloadPdf.dataset.filename = filename; downloadPdf.textContent = 'Download source PDF';
+          actions.append(downloadPdf);
+        }
+        if (actions.childElementCount) card.append(actions);
         node.insertBefore(card, node.querySelector('.act'));
       }
     } catch { if (node.isConnected) node.querySelector('.ai-s').textContent = 'Sources unavailable'; }
@@ -196,12 +276,46 @@ import './integration.css';
   $('#comp').addEventListener('submit', e => { e.preventDefault(); const t = q.value.trim(); if (!t) return; q.value = ''; grow(); ask(t); });
   document.addEventListener('click', e => { const s = e.target.closest('[data-ask]'); if (s) ask(s.textContent.trim(), s.dataset.kind); });
   // sources, copy, feedback
+  const pdfUrls = new Set();
+  addEventListener('beforeunload', () => pdfUrls.forEach(url => URL.revokeObjectURL(url)));
+  const sourcePdfPath = (msgId, sourceId) => '/messages/' + encodeURIComponent(msgId) + '/sources/' + encodeURIComponent(sourceId) + '/pdf';
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = filename.replace(/[/\\]/g, '_');
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  async function openIndexedPdf(msgId, sourceId) {
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) return say('Allow pop-ups to open the PDF in a new tab');
+    tab.opener = null;
+    try {
+      const blob = await api(sourcePdfPath(msgId, sourceId), { responseType: 'blob' });
+      const url = URL.createObjectURL(blob); pdfUrls.add(url); tab.location.replace(url);
+    } catch (error) { tab.close(); say(error.message); }
+  }
   const toggleSrc = (h, on) => { h.setAttribute('aria-expanded', String(on)); h.nextElementSibling.hidden = !on; };
   document.addEventListener('click', e => {
     const h = e.target.closest('.src-h'); if (h) toggleSrc(h, h.getAttribute('aria-expanded') !== 'true');
-    const c = e.target.closest('.cite'); if (c) { const s = c.closest('.msg').querySelector('.src'); toggleSrc($('.src-h', s), true);
-      s.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const c = e.target.closest('.cite'); if (c) { const s = [...c.closest('.msg').querySelectorAll('.src')].find(x => x.dataset.citation === c.dataset.citation);
+      if (!s) return; toggleSrc($('.src-h', s), true);
+      const official = s.querySelector('.cv-source-open'), local = s.querySelector('.cv-pdf-open');
+      if (local) local.click(); else if (official) official.click();
+      else s.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       s.classList.remove('flash'); void s.offsetWidth; s.classList.add('flash'); setTimeout(() => s.classList.remove('flash'), 1600); }
+    const openPdf = e.target.closest('.cv-pdf-open');
+    if (openPdf) openIndexedPdf(openPdf.closest('.msg').dataset.messageId, openPdf.dataset.sourceId);
+    const downloadPdf = e.target.closest('.cv-pdf-download');
+    if (downloadPdf) api(sourcePdfPath(downloadPdf.closest('.msg').dataset.messageId, downloadPdf.dataset.sourceId) + '?download=true', { responseType: 'blob' })
+      .then(blob => downloadBlob(blob, downloadPdf.dataset.filename || 'source.pdf'), error => say(error.message));
+    const exportButton = e.target.closest('[data-export]');
+    if (exportButton) {
+      const format = exportButton.dataset.export, msgId = exportButton.closest('.msg').dataset.messageId;
+      exportButton.disabled = true;
+      api('/messages/' + encodeURIComponent(msgId) + '/export/' + format, { responseType: 'blob' })
+        .then(blob => downloadBlob(blob, 'CoVakeel-answer-' + msgId.slice(0, 8) + '.' + format), error => say(error.message))
+        .finally(() => { exportButton.disabled = false; });
+    }
     const cp = e.target.closest('[data-copy]'); if (cp) { const a = cp.closest('.msg').querySelector('.ans');
       (navigator.clipboard ? navigator.clipboard.writeText(a.innerText) : Promise.reject()).then(() => say('Answer copied'), () => say('Select the text to copy it')); }
     const f = e.target.closest('[data-fb]'); if (f) { const on = f.getAttribute('aria-pressed') !== 'true';

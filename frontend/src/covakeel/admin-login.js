@@ -19,6 +19,20 @@ const button = document.querySelector('#login-button');
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   errorNode.hidden = true;
+  const email = form.elements.email;
+  const password = form.elements.password;
+  if (!email.value.trim() || !email.checkValidity()) {
+    errorNode.textContent = email.value.trim() ? 'Enter a valid admin email address.' : 'Enter your admin email address.';
+    errorNode.hidden = false;
+    email.focus();
+    return;
+  }
+  if (!password.value) {
+    errorNode.textContent = 'Enter your admin password.';
+    errorNode.hidden = false;
+    password.focus();
+    return;
+  }
   button.disabled = true;
   button.textContent = 'Signing in…';
   try {

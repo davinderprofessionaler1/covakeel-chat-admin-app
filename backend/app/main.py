@@ -27,6 +27,7 @@ async def lifespan(app):
     await db.conversations.create_index([("userId", 1), ("updatedAt", -1)])
     await db.messages.create_index([("conversationId", 1), ("createdAt", 1)])
     if ENABLE_ADMIN:
+        await db.legal_changes.create_index("key", unique=True)
         await seed_documents()
         await recover_interrupted_uploads()
     try:
